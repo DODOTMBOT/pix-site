@@ -53,9 +53,23 @@ const SEED_DATA: Employee[] = [
   },
 ];
 
+function migrate(emp: Record<string, unknown>): Employee {
+  if (!Array.isArray(emp['parentIds'])) {
+    const old = emp['parentId'];
+    emp['parentIds'] = old ? [old] : [];
+    delete emp['parentId'];
+  }
+  if (!Array.isArray(emp['relatedIds'])) emp['relatedIds'] = [];
+  if (!Array.isArray(emp['extraFields'])) emp['extraFields'] = [];
+  return emp as unknown as Employee;
+}
+
 export function getEmployees(): Employee[] {
   const raw = localStorage.getItem(STORAGE_KEY);
-  if (raw) return JSON.parse(raw) as Employee[];
+  if (raw) {
+    const parsed = (JSON.parse(raw) as Record<string, unknown>[]).map(migrate);
+    return parsed;
+  }
   saveEmployees(SEED_DATA);
   return SEED_DATA;
 }

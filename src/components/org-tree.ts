@@ -16,7 +16,7 @@ function buildBranch(
   if (visited.has(employee.id)) return branch;
   visited.add(employee.id);
 
-  const children = allEmployees.filter(e => e.parentIds.includes(employee.id));
+  const children = allEmployees.filter(e => (Array.isArray(e.parentIds) ? e.parentIds : []).includes(employee.id));
   if (children.length === 0) return branch;
 
   const connector = document.createElement('div');
@@ -56,7 +56,7 @@ export function renderOrgTree(
   const wrap = document.createElement('div');
   wrap.style.cssText = 'overflow-x: auto; padding: 8px 0 32px;';
 
-  const roots = employees.filter(e => e.parentIds.length === 0);
+  const roots = employees.filter(e => (Array.isArray(e.parentIds) ? e.parentIds : []).length === 0);
   if (roots.length === 0) return wrap;
 
   const topLevel = document.createElement('div');

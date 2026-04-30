@@ -11,8 +11,8 @@ function renderModal(emp: Employee, allEmployees: Employee[], onClose: () => voi
     z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px;
   `;
 
-  const subordinates = allEmployees.filter(e => e.parentIds.includes(emp.id));
-  const managers = emp.parentIds.map(pid => getEmployee(pid)).filter((m): m is NonNullable<typeof m> => !!m);
+  const subordinates = allEmployees.filter(e => (Array.isArray(e.parentIds) ? e.parentIds : []).includes(emp.id));
+  const managers = (Array.isArray(emp.parentIds) ? emp.parentIds : []).map(pid => getEmployee(pid)).filter((m): m is NonNullable<typeof m> => !!m);
 
   const avatarContent = emp.avatar && emp.avatar.startsWith('data:')
     ? `<img src="${emp.avatar}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;margin:0 auto 16px;display:block;">`
