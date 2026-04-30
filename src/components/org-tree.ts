@@ -5,93 +5,106 @@ function safeParentIds(e: Employee): string[] {
   return Array.isArray(e.parentIds) ? e.parentIds : [];
 }
 
-function renderCard(
-  emp: Employee,
-  allEmployees: Employee[],
-  onClick: (emp: Employee) => void
-): HTMLElement {
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;';
-
-  // Badge only when employee has more than one manager
-  const pids = safeParentIds(emp);
-  if (pids.length > 1) {
-    const names = pids
-      .map(pid => allEmployees.find(e => e.id === pid)?.name.split(' ')[0])
-      .filter(Boolean)
-      .join(', ');
-    if (names) {
-      const hint = document.createElement('div');
-      hint.style.cssText = 'font-size:11px;color:#9ca3af;margin-bottom:4px;text-align:center;width:160px;';
-      hint.textContent = `↑ ${names}`;
-      wrap.appendChild(hint);
+function computeLevels(employees: Employee[]): Map<string, number> {
+  const map = new Map<string, number>();
+  employees.forEach(e => {
+    if (safeParentIds(e).length === 0) map.set(e.id, 0);
+  });
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const e of employees) {
+      const pids = safeParentIds(e);
+      if (pids.length === 0) continue;
+      const maxParent = pids.reduce((m, pid) => Math.max(m, map.get(pid) ?? -1), -1);
+      if (maxParent < 0) continue;
+      const next = maxParent + 1;
+      if ((map.get(e.id) ?? -1) < next) {
+        map.set(e.id, next);
+        changed = true;
+      }
     }
   }
+  return map;
+}
 
-  const card = document.createElement('div');
-  card.className = 'org-node';
+function renderOrgNode(emp: Employee, onClick: (emp: Employee) => void): HTMLElement {
+  const node = document.createElement('div');
+  node.className = 'org-node';
 
   const avatarHtml = emp.avatar && emp.avatar.startsWith('data:')
-    ? `<img src="${emp.avatar}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;margin:0 auto 8px;display:block;flex-shrink:0;">`
+    ? `<img src="${emp.avatar}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;margin:0 auto 8px;display:block;">`
     : `<div class="org-avatar" style="background:${getAvatarColor(emp.name)}">${getInitials(emp.name)}</div>`;
 
-  card.innerHTML = `
+  node.innerHTML = `
     ${avatarHtml}
-    <div style="font-size:13px;font-weight:600;color:#111;line-height:1.3;margin-bottom:3px;">${emp.name}</div>
-    <div style="font-size:12px;color:#6b7280;margin-bottom:2px;">${emp.position}</div>
+    <div style="font-size:13px;font-weight:600;color:#111;line-height:1.3;margin-bottom:2px;">${emp.name}</div>
+    <div style="font-size:12px;color:#6b7280;margin-bottom:1px;">${emp.position}</div>
     <div style="font-size:11px;color:#9ca3af;">${emp.department}</div>
   `;
 
-  card.addEventListener('click', () => onClick(emp));
-  wrap.appendChild(card);
-  return wrap;
-}
-
-function buildCol(
-  emp: Employee,
-  allEmployees: Employee[],
-  onClick: (emp: Employee) => void,
-  visited: Set<string>
-): HTMLElement {
-  const col = document.createElement('div');
-  col.className = 'org-col';
-
-  col.appendChild(renderCard(emp, allEmployees, onClick));
-
-  if (visited.has(emp.id)) return col;
-  const nextVisited = new Set(visited);
-  nextVisited.add(emp.id);
-
-  const children = allEmployees.filter(e => safeParentIds(e)[0] === emp.id);
-  if (children.length === 0) return col;
-
-  const childrenWrap = document.createElement('div');
-  childrenWrap.className = 'org-children';
-  children.forEach(child => childrenWrap.appendChild(buildCol(child, allEmployees, onClick, nextVisited)));
-
-  col.appendChild(childrenWrap);
-  return col;
+  node.addEventListener('click', () => onClick(emp));
+  return node;
 }
 
 export function renderOrgTree(
   employees: Employee[],
   onClick: (emp: Employee) => void
 ): HTMLElement {
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'overflow-x:auto;padding:8px 0 32px;';
+  const chart = document.createElement('div');
+  chart.className = 'org-chart';
 
-  const roots = employees.filter(e => safeParentIds(e).length === 0);
-  if (roots.length === 0) return wrap;
-
-  const level = document.createElement('div');
-  level.className = 'org-level';
+  const levelMap = computeLevels(employees);
+  const maxLevel = employees.reduce((m, e) => Math.max(m, levelMap.get(e.id) ?? -1), -1);
+  if (maxLevel < 0) return chart;
 
   const visited = new Set<string>();
-  roots.forEach(root => {
-    level.appendChild(buildCol(root, employees, onClick, visited));
-    visited.add(root.id);
-  });
 
-  wrap.appendChild(level);
-  return wrap;
+  for (let lvl = 0; lvl <= maxLevel; lvl++) {
+    const levelEmps = employees.filter(e => levelMap.get(e.id) === lvl && !visited.has(e.id));
+    if (levelEmps.length === 0) continue;
+    levelEmps.forEach(e => visited.add(e.id));
+
+    const levelEl = document.createElement('div');
+    levelEl.className = 'org-level';
+
+    if (lvl === 0) {
+      // Roots: render nodes directly in the level row
+      levelEmps.forEach(emp => levelEl.appendChild(renderOrgNode(emp, onClick)));
+    } else {
+      // Group by sorted parentIds key
+      const groups = new Map<string, Employee[]>();
+      levelEmps.forEach(emp => {
+        const key = safeParentIds(emp).slice().sort().join(',');
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(emp);
+      });
+
+      groups.forEach((members, key) => {
+        const group = document.createElement('div');
+        group.className = 'org-group';
+
+        // Group label: first-name of each parent
+        const label = document.createElement('div');
+        label.className = 'org-group-label';
+        const parentNames = key.split(',')
+          .map(pid => employees.find(e => e.id === pid)?.name.split(' ')[0])
+          .filter(Boolean)
+          .join(', ');
+        label.textContent = `↑ ${parentNames}`;
+        group.appendChild(label);
+
+        const nodes = document.createElement('div');
+        nodes.className = 'org-group-nodes';
+        members.forEach(emp => nodes.appendChild(renderOrgNode(emp, onClick)));
+        group.appendChild(nodes);
+
+        levelEl.appendChild(group);
+      });
+    }
+
+    chart.appendChild(levelEl);
+  }
+
+  return chart;
 }

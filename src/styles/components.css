@@ -198,63 +198,74 @@
   color: var(--text-secondary);
 }
 
-/* ─── Org tree ────────────────────────────────────── */
-.org-node {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 16px 12px;
-  width: 160px;
-  min-height: 120px;
-  text-align: center;
-  cursor: pointer;
-  box-sizing: border-box;
+/* ─── Org chart ───────────────────────────────────── */
+.org-chart {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  transition: box-shadow 0.15s, border-color 0.15s;
-  flex-shrink: 0;
-}
-
-.org-node:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
-  border-color: #f97316;
-}
-
-.org-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  font-weight: 700;
-  color: white;
-  margin: 0 auto 8px;
-  flex-shrink: 0;
+  gap: 40px;
+  padding: 32px;
+  overflow-x: auto;
 }
 
 .org-level {
   display: flex;
   flex-direction: row;
-  gap: 24px;
+  gap: 32px;
   justify-content: center;
+  flex-wrap: wrap;
 }
 
-.org-col {
+.org-group {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
 }
 
-.org-children {
+.org-group-label {
+  font-size: 11px;
+  color: #9ca3af;
+  text-align: center;
+}
+
+.org-group-nodes {
   display: flex;
   flex-direction: row;
-  gap: 16px;
-  margin-top: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.org-node {
+  width: 150px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 12px;
+  text-align: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.org-node:hover {
+  border-color: #f97316;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.15);
+}
+
+.org-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: white;
+  margin: 0 auto 8px;
+  flex-shrink: 0;
 }
 
 /* ─── Responsive ──────────────────────────────────── */
