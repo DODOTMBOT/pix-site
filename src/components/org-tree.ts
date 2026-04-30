@@ -72,26 +72,47 @@ export function renderOrgTree(
       // Roots: render nodes directly in the level row
       levelEmps.forEach(emp => levelEl.appendChild(renderOrgNode(emp, onClick)));
     } else {
-      // Group by sorted parentIds key
-      const groups = new Map<string, Employee[]>();
+      // Group by parentIds + department
+      const groups = new Map<string, { parentKey: string; dept: string; members: Employee[] }>();
       levelEmps.forEach(emp => {
-        const key = safeParentIds(emp).slice().sort().join(',');
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key)!.push(emp);
+        const parentKey = safeParentIds(emp).slice().sort().join(',');
+        const fullKey = parentKey + '|' + emp.department;
+        if (!groups.has(fullKey)) groups.set(fullKey, { parentKey, dept: emp.department, members: [] });
+        groups.get(fullKey)!.members.push(emp);
       });
 
-      groups.forEach((members, key) => {
+      // Determine which parentKeys have multiple departments (need dept shown in label)
+      const parentKeyDeptCount = new Map<string, number>();
+      groups.forEach(({ parentKey }) => {
+        parentKeyDeptCount.set(parentKey, (parentKeyDeptCount.get(parentKey) ?? 0) + 1);
+      });
+
+      // Sort groups: by parentKey first (clusters same-parent groups), then by dept
+      const sortedGroups = Array.from(groups.values()).sort((a, b) =>
+        a.parentKey !== b.parentKey ? a.parentKey.localeCompare(b.parentKey) : a.dept.localeCompare(b.dept)
+      );
+
+      let prevParentKey = '';
+      sortedGroups.forEach(({ parentKey, dept, members }) => {
+        // Insert spacer between groups of different parent sets
+        if (prevParentKey && parentKey !== prevParentKey) {
+          const spacer = document.createElement('div');
+          spacer.style.cssText = 'width:16px;flex-shrink:0;';
+          levelEl.appendChild(spacer);
+        }
+        prevParentKey = parentKey;
+
         const group = document.createElement('div');
         group.className = 'org-group';
 
-        // Group label: first-name of each parent
         const label = document.createElement('div');
         label.className = 'org-group-label';
-        const parentNames = key.split(',')
+        const parentNames = parentKey.split(',')
           .map(pid => employees.find(e => e.id === pid)?.name.split(' ')[0])
           .filter(Boolean)
           .join(', ');
-        label.textContent = `↑ ${parentNames}`;
+        const showDept = (parentKeyDeptCount.get(parentKey) ?? 1) > 1;
+        label.textContent = showDept ? `↑ ${parentNames} · ${dept}` : `↑ ${parentNames}`;
         group.appendChild(label);
 
         const nodes = document.createElement('div');
