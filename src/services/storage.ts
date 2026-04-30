@@ -11,11 +11,11 @@ const DEPT_SEED: Department[] = [
 ];
 
 const EMP_SEED: Employee[] = [
-  { id: 'e1', name: 'Сигал Борис',      position: 'CEO',               department: 'Управление',  departmentId: 'd1', pizzeria: 'Все пиццерии',   email: 'sigal@pix-dodo.ru',      phone: '+7 900 000-00-01', relatedIds: [], extraFields: [] },
-  { id: 'e2', name: 'Коваль Андрей',    position: 'Operations Manager', department: 'Управление',  departmentId: 'd1', pizzeria: 'Все пиццерии',   email: 'koval@pix-dodo.ru',      phone: '+7 900 000-00-02', relatedIds: [], extraFields: [] },
-  { id: 'e3', name: 'Подольская Ирина', position: 'Chief Accountant',   department: 'Бухгалтерия', departmentId: 'd2', pizzeria: '',               email: 'podolskaya@pix-dodo.ru', phone: '+7 900 000-00-03', relatedIds: [], extraFields: [] },
-  { id: 'e4', name: 'Катерина Иванова', position: 'Accountant',         department: 'Бухгалтерия', departmentId: 'd2', pizzeria: '',               email: 'katerina@pix-dodo.ru',   phone: '+7 900 000-00-04', relatedIds: [], extraFields: [] },
-  { id: 'e5', name: 'Виктория Смирнова',position: 'Accountant',         department: 'Бухгалтерия', departmentId: 'd2', pizzeria: '',               email: 'viktoriya@pix-dodo.ru',  phone: '+7 900 000-00-05', relatedIds: [], extraFields: [] },
+  { id: 'e1', name: 'Сигал Борис',       position: 'CEO',               department: 'Управление',  departmentId: 'd1', managerId: null,  pizzeria: 'Все пиццерии', email: 'sigal@pix-dodo.ru',      phone: '+7 900 000-00-01', relatedIds: [], extraFields: [] },
+  { id: 'e2', name: 'Коваль Андрей',   position: 'Operations Manager', department: 'Управление',  departmentId: 'd1', managerId: 'e1',  pizzeria: 'Все пиццерии', email: 'koval@pix-dodo.ru',      phone: '+7 900 000-00-02', relatedIds: [], extraFields: [] },
+  { id: 'e3', name: 'Подольская Ирина',position: 'Chief Accountant',   department: 'Бухгалтерия', departmentId: 'd2', managerId: 'e1',  pizzeria: '',             email: 'podolskaya@pix-dodo.ru', phone: '+7 900 000-00-03', relatedIds: [], extraFields: [] },
+  { id: 'e4', name: 'Катерина Иванова',position: 'Accountant',         department: 'Бухгалтерия', departmentId: 'd2', managerId: 'e3',  pizzeria: '',             email: 'katerina@pix-dodo.ru',   phone: '+7 900 000-00-04', relatedIds: [], extraFields: [] },
+  { id: 'e5', name: 'Виктория Смирнова',position: 'Accountant',        department: 'Бухгалтерия', departmentId: 'd2', managerId: 'e3',  pizzeria: '',             email: 'viktoriya@pix-dodo.ru',  phone: '+7 900 000-00-05', relatedIds: [], extraFields: [] },
 ];
 
 // ─── Department CRUD ──────────────────────────────────────────────────────────
@@ -60,10 +60,11 @@ export function deleteDepartment(id: string): void {
 // ─── Employee CRUD ────────────────────────────────────────────────────────────
 
 function migrateEmployee(raw: Record<string, unknown>): Employee {
-  if (!Array.isArray(raw['relatedIds']))  raw['relatedIds']  = [];
-  if (!Array.isArray(raw['extraFields'])) raw['extraFields'] = [];
-  if (raw['departmentId'] === undefined)  raw['departmentId'] = null;
-  if (typeof raw['department'] !== 'string') raw['department'] = '';
+  if (!Array.isArray(raw['relatedIds']))      raw['relatedIds']  = [];
+  if (!Array.isArray(raw['extraFields']))     raw['extraFields'] = [];
+  if (raw['departmentId'] === undefined)      raw['departmentId'] = null;
+  if (raw['managerId']    === undefined)      raw['managerId']    = null;
+  if (typeof raw['department'] !== 'string')  raw['department']   = '';
   delete raw['parentIds'];
   return raw as unknown as Employee;
 }

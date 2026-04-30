@@ -24,6 +24,7 @@ export interface Employee {
   position: string;
   department: string;       // display name, synced from Department.name on save
   departmentId: string | null;
+  managerId: string | null; // direct manager (person-to-person)
   pizzeria: string;
   email: string;
   phone: string;

@@ -1,5 +1,5 @@
 import { navigate } from '../router';
-import { getEmployee, addEmployee, updateEmployee, getDepartments } from '../services/storage';
+import { getEmployee, getEmployees, addEmployee, updateEmployee, getDepartments } from '../services/storage';
 import type { Employee } from '../types';
 
 function inputStyle(hasError = false): string {
@@ -32,6 +32,14 @@ export function renderAdminEmployee(empId?: string): HTMLElement {
       `<option value="">— Не выбран —</option>`,
       ...departments.map(d =>
         `<option value="${d.id}" ${existing?.departmentId === d.id ? 'selected' : ''}>${d.name}</option>`
+      ),
+    ].join('');
+
+    const otherEmps = getEmployees().filter(e => e.id !== empId);
+    const managerOptions = [
+      `<option value="">— Нет —</option>`,
+      ...otherEmps.map(e =>
+        `<option value="${e.id}" ${existing?.managerId === e.id ? 'selected' : ''}>${e.name} — ${e.position}</option>`
       ),
     ].join('');
 
@@ -78,9 +86,16 @@ export function renderAdminEmployee(empId?: string): HTMLElement {
                   </select>
                 </div>
                 <div>
-                  ${labelHtml('Пиццерия')}
-                  <input id="f-pizzeria" type="text" value="${existing?.pizzeria ?? ''}" style="${inputStyle()}" placeholder="ул. Ленина">
+                  ${labelHtml('Непосредственный руководитель')}
+                  <select id="f-manager" style="${inputStyle()}">
+                    ${managerOptions}
+                  </select>
                 </div>
+              </div>
+
+              <div style="margin-bottom:16px;">
+                ${labelHtml('Пиццерия')}
+                <input id="f-pizzeria" type="text" value="${existing?.pizzeria ?? ''}" style="${inputStyle()}" placeholder="ул. Ленина">
               </div>
 
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
@@ -196,11 +211,12 @@ export function renderAdminEmployee(empId?: string): HTMLElement {
 
       if (!valid) return;
 
-      const deptId       = wrap.querySelector<HTMLSelectElement>('#f-dept')!.value || null;
-      const deptName     = deptId ? (getDepartments().find(d => d.id === deptId)?.name ?? '') : '';
-      const pizzeria     = wrap.querySelector<HTMLInputElement>('#f-pizzeria')!.value.trim();
-      const email        = wrap.querySelector<HTMLInputElement>('#f-email')!.value.trim();
-      const phone        = wrap.querySelector<HTMLInputElement>('#f-phone')!.value.trim();
+      const deptId    = wrap.querySelector<HTMLSelectElement>('#f-dept')!.value    || null;
+      const managerId = wrap.querySelector<HTMLSelectElement>('#f-manager')!.value || null;
+      const deptName  = deptId ? (getDepartments().find(d => d.id === deptId)?.name ?? '') : '';
+      const pizzeria  = wrap.querySelector<HTMLInputElement>('#f-pizzeria')!.value.trim();
+      const email     = wrap.querySelector<HTMLInputElement>('#f-email')!.value.trim();
+      const phone     = wrap.querySelector<HTMLInputElement>('#f-phone')!.value.trim();
 
       wrap.querySelectorAll<HTMLElement>('.extra-row').forEach(row => {
         const idx = Number(row.dataset['index']);
@@ -212,6 +228,7 @@ export function renderAdminEmployee(empId?: string): HTMLElement {
         name, position,
         department: deptName,
         departmentId: deptId,
+        managerId,
         pizzeria, email, phone,
         relatedIds: existing?.relatedIds ?? [],
         extraFields: extraFields.filter(f => f.label),

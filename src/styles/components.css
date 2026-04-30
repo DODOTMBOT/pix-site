@@ -275,6 +275,21 @@
   border-color: #f97316;
 }
 
+.emp-with-subs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.emp-subs-block {
+  margin-left: 24px;
+  padding-left: 16px;
+  border-left: 2px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .dept-children {
   display: flex;
   flex-direction: column;
