@@ -1,8 +1,20 @@
 import { navigate } from '../router';
 import { getEmployees, getDepartments } from '../services/storage';
-import { renderOrgTree } from '../components/org-tree';
 import { getAvatarColor, getInitials } from '../components/orgchart-node';
-import type { Employee } from '../types';
+import type { Employee, Department } from '../types';
+
+// ─── Avatar helpers ──────────────────────────────────────────────────────────
+
+function avatarHtml(emp: Employee, cls: string): string {
+  const initials = getInitials(emp.name);
+  const color    = getAvatarColor(emp.name);
+  if (emp.avatar && emp.avatar.startsWith('data:')) {
+    return `<img src="${emp.avatar}" class="emp-avatar ${cls}" style="object-fit:cover;">`;
+  }
+  return `<div class="emp-avatar ${cls}" style="background:${color};">${initials}</div>`;
+}
+
+// ─── Modal ───────────────────────────────────────────────────────────────────
 
 function renderModal(emp: Employee, allEmployees: Employee[], onClose: () => void): HTMLElement {
   const overlay = document.createElement('div');
@@ -71,14 +83,157 @@ function renderModal(emp: Employee, allEmployees: Employee[], onClose: () => voi
   return overlay;
 }
 
+// ─── Org tree rendering ───────────────────────────────────────────────────────
+
+function buildEmpCard(
+  emp: Employee,
+  onClick: (emp: Employee) => void,
+  extraClass = ''
+): HTMLElement {
+  const card = document.createElement('div');
+  card.className = `emp-card${extraClass ? ' ' + extraClass : ''}`;
+  card.innerHTML = `
+    ${avatarHtml(emp, '')}
+    <div class="emp-info">
+      <div class="emp-name">${emp.name}</div>
+      <div class="emp-pos">${emp.position}</div>
+      ${emp.pizzeria ? `<div class="emp-pizzeria">${emp.pizzeria}</div>` : ''}
+    </div>
+  `;
+  card.addEventListener('click', () => onClick(emp));
+  return card;
+}
+
+function buildDeptBlock(
+  dept: Department,
+  allDepts: Department[],
+  allEmps: Employee[],
+  onClick: (emp: Employee) => void,
+  nested = false
+): HTMLElement {
+  const block = document.createElement('div');
+  block.className = nested ? 'dept-block nested' : 'dept-block';
+
+  const leader  = dept.leaderId ? allEmps.find(e => e.id === dept.leaderId) : null;
+  const members = allEmps.filter(e => e.departmentId === dept.id && e.id !== dept.leaderId);
+  const children = allDepts.filter(d => d.parentDepartmentId === dept.id);
+
+  // Title
+  const titleEl = document.createElement('div');
+  titleEl.className = 'dept-title';
+  titleEl.textContent = dept.name.toUpperCase();
+  block.appendChild(titleEl);
+
+  // Leader row
+  if (leader) {
+    const leaderRow = document.createElement('div');
+    leaderRow.className = 'dept-leader-row';
+    leaderRow.innerHTML = `
+      ${avatarHtml(leader, 'sm')}
+      <div>
+        <span class="emp-name">${leader.name}</span>
+        <span class="emp-pos"> · ${leader.position}</span>
+      </div>
+    `;
+    leaderRow.style.cursor = 'pointer';
+    leaderRow.addEventListener('click', () => onClick(leader));
+    block.appendChild(leaderRow);
+  }
+
+  // Members
+  if (members.length > 0) {
+    const membersWrap = document.createElement('div');
+    membersWrap.className = 'dept-members';
+    members.forEach(emp => membersWrap.appendChild(buildEmpCard(emp, onClick)));
+    block.appendChild(membersWrap);
+  }
+
+  // Nested child departments
+  children.forEach(child => {
+    block.appendChild(buildDeptBlock(child, allDepts, allEmps, onClick, true));
+  });
+
+  return block;
+}
+
+function getDeptsByLeader(
+  leaderId: string,
+  depts: Department[],
+  emps: Employee[]
+): Department[] {
+  return depts.filter(d => {
+    if (d.leaderId === leaderId) return true;
+    return emps.some(e => e.departmentId === d.id && e.managerId === leaderId);
+  });
+}
+
+function buildOrgColumns(
+  employees: Employee[],
+  departments: Department[],
+  onClick: (emp: Employee) => void
+): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'org-page';
+
+  const rootLeaders = employees.filter(e => !e.managerId);
+
+  if (rootLeaders.length === 0) {
+    wrap.innerHTML = `<div style="text-align:center;padding:80px 20px;color:#9ca3af;font-size:14px;">Нет корневых руководителей</div>`;
+    return wrap;
+  }
+
+  const columns = document.createElement('div');
+  columns.className = 'org-columns';
+
+  rootLeaders.forEach((leader, idx) => {
+    // Divider between columns
+    if (idx > 0) {
+      const divider = document.createElement('div');
+      divider.className = 'org-divider';
+      columns.appendChild(divider);
+    }
+
+    const col = document.createElement('div');
+    col.className = 'org-column';
+
+    // Root card
+    const rootCard = document.createElement('div');
+    rootCard.className = 'root-card';
+    rootCard.innerHTML = `
+      ${avatarHtml(leader, 'large')}
+      <div class="root-info">
+        <div class="root-name">${leader.name}</div>
+        <div class="root-pos">${leader.position}</div>
+        ${leader.pizzeria ? `<div class="emp-pizzeria">${leader.pizzeria}</div>` : ''}
+      </div>
+    `;
+    rootCard.style.cursor = 'pointer';
+    rootCard.addEventListener('click', () => onClick(leader));
+    col.appendChild(rootCard);
+
+    // Departments belonging to this leader (root depts only — no parent)
+    const leaderDepts = getDeptsByLeader(leader.id, departments, employees)
+      .filter(d => !d.parentDepartmentId);
+
+    leaderDepts.forEach(dept => {
+      col.appendChild(buildDeptBlock(dept, departments, employees, onClick, false));
+    });
+
+    columns.appendChild(col);
+  });
+
+  wrap.appendChild(columns);
+  return wrap;
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export function renderOrgChart(): HTMLElement {
   const page = document.createElement('div');
   page.className = 'page-enter';
 
-  const employees    = getEmployees();
-  const departments  = getDepartments();
-  console.log('departments:', departments);
-  console.log('employees:', employees);
+  const employees   = getEmployees();
+  const departments = getDepartments();
 
   let treeContent: HTMLElement;
   if (departments.length === 0) {
@@ -92,7 +247,7 @@ export function renderOrgChart(): HTMLElement {
     `;
     treeContent.querySelector('#goto-admin')!.addEventListener('click', () => navigate('/admin'));
   } else {
-    treeContent = renderOrgTree(employees, departments, emp => {
+    treeContent = buildOrgColumns(employees, departments, emp => {
       const modal = renderModal(emp, employees, () => modal.remove());
       document.body.appendChild(modal);
     });
