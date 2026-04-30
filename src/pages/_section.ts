@@ -10,16 +10,15 @@ export function buildSectionPage({ title, subtitle, onBack }: SectionPageOptions
 
   page.innerHTML = `
     <div class="container">
-      <section style="padding: 40px 0 48px;">
+      <section style="padding: 48px 0 64px;">
         <button class="btn btn-ghost" id="back-btn">← Назад</button>
-        <div style="margin-top: 24px;">
-          <div style="font-size:11px; font-weight:600; letter-spacing:0.12em; color:var(--text-secondary); text-transform:uppercase; margin-bottom:14px;">Раздел</div>
-          <h1 style="font-size:28px; font-weight:700; letter-spacing:-0.02em; color:var(--text); margin-bottom:8px;">${title}</h1>
-          <p style="font-size:14px; color:var(--text-secondary); margin-bottom:40px;">${subtitle}</p>
-          <div class="placeholder-card">
-            <div class="placeholder-title">Раздел в разработке</div>
-            <div class="placeholder-sub">Содержимое появится в ближайшее время</div>
-          </div>
+        <div style="margin-top: 28px; margin-bottom: 32px;">
+          <h1 style="font-size:36px; font-weight:700; letter-spacing:-0.02em; color:var(--text); margin-bottom:8px;">${title}</h1>
+          <p style="font-size:15px; color:var(--text-secondary);">${subtitle}</p>
+        </div>
+        <div class="placeholder-card">
+          <div class="placeholder-title">Раздел в разработке</div>
+          <div class="placeholder-sub">Содержимое появится в ближайшее время</div>
         </div>
       </section>
     </div>

@@ -4,100 +4,101 @@ import type { NavItem } from '../types';
 const NAV_ITEMS: NavItem[] = [
   {
     title: 'Регламенты',
-    description: 'Стандарты работы, правила, процедуры',
+    description: 'Стандарты работы, правила и процедуры компании',
     path: '/regulations',
     badge: { text: 'обновлено', variant: 'orange' },
   },
   {
     title: 'Ключи доступа',
-    description: 'Логины, пароли, системные доступы',
+    description: 'Логины, пароли и системные доступы',
     path: '/access',
   },
   {
     title: 'Инструкции',
-    description: 'Пошаговые гайды и обучение',
+    description: 'Пошаговые гайды и обучающие материалы',
     path: '/instructions',
     badge: { text: '12 файлов', variant: 'gray' },
   },
   {
     title: 'Контакты',
-    description: 'Команда, поставщики, служба поддержки',
+    description: 'Команда, поставщики и служба поддержки',
     path: '/contacts',
   },
 ];
 
-function buildSectionRow(item: NavItem): HTMLElement {
-  const row = document.createElement('div');
-  row.className = 'section-row';
+function buildCard(item: NavItem): HTMLElement {
+  const card = document.createElement('div');
+  card.className = 'section-card';
 
   const badgeHtml = item.badge
     ? `<span class="badge badge-${item.badge.variant}">${item.badge.text}</span>`
     : '';
 
-  row.innerHTML = `
-    <div class="section-left">
-      <div class="section-title-wrap">
-        <span class="section-title">${item.title}</span>
-        ${badgeHtml}
-      </div>
-      <span class="section-desc">${item.description}</span>
+  card.innerHTML = `
+    <div class="section-card-header">
+      <span class="section-card-title">${item.title}</span>
+      ${badgeHtml}
     </div>
-    <span class="section-arrow">›</span>
+    <p class="section-card-desc">${item.description}</p>
+    <span class="section-card-arrow">→</span>
   `;
 
-  row.addEventListener('click', () => navigate(item.path));
-  return row;
+  card.addEventListener('click', () => navigate(item.path));
+  return card;
 }
 
 export function renderHome(): HTMLElement {
   const page = document.createElement('div');
   page.className = 'page-enter';
 
-  const heroSection = `
-    <section style="padding: 52px 0 48px;">
-      <div style="font-size:11px; font-weight:600; letter-spacing:0.12em; color:var(--text-secondary); text-transform:uppercase; margin-bottom:18px;">Портал сотрудника</div>
-      <h1 style="font-size:32px; font-weight:700; line-height:1.2; color:var(--text); margin-bottom:16px; letter-spacing:-0.02em;">
-        Всё что нужно для работы в <span style="color:var(--accent);">PiX</span>
-      </h1>
-      <p style="font-size:15px; color:var(--text-secondary); max-width:480px; margin-bottom:32px; line-height:1.6;">
-        Регламенты, инструкции, ключи доступа и контакты команды — в одном месте, всегда под рукой.
-      </p>
-      <div style="display:flex; gap:12px; flex-wrap:wrap;">
-        <button class="btn btn-primary" id="btn-login">Войти</button>
-        <button class="btn btn-outline" id="btn-more">Подробнее</button>
+  page.innerHTML = `
+    <section style="background: linear-gradient(180deg, #fafaf7 0%, #ffffff 100%); padding: 80px 0;">
+      <div class="container" style="text-align:center;">
+        <div style="font-size:12px; font-weight:600; letter-spacing:0.12em; color:var(--text-secondary); text-transform:uppercase; margin-bottom:20px;">Портал сотрудника</div>
+        <h1 style="font-size:48px; font-weight:700; line-height:1.15; color:var(--text); margin-bottom:20px; letter-spacing:-0.03em;">
+          Всё что нужно для работы в <span style="color:var(--accent);">PiX</span>
+        </h1>
+        <p style="font-size:17px; color:var(--text-secondary); max-width:480px; margin:0 auto 40px; line-height:1.6;">
+          Регламенты, инструкции, ключи доступа и контакты команды — в одном месте, всегда под рукой.
+        </p>
+        <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+          <button class="btn btn-primary btn-lg" id="btn-open">Открыть портал</button>
+          <button class="btn btn-outline btn-lg" id="btn-more">Подробнее</button>
+        </div>
       </div>
     </section>
-  `;
 
-  page.innerHTML = `
-    <div class="container">
-      ${heroSection}
-      <div class="divider"></div>
-      <section style="padding: 40px 0;">
+    <section style="padding: 72px 0;">
+      <div class="container">
         <div class="block-label">Разделы</div>
-        <div class="sections-list" id="sections-list"></div>
-      </section>
-      <section style="padding: 0 0 40px;">
-        <div class="metrics-grid">
-          <div class="metric-cell">
+        <div class="cards-grid" id="cards-grid"></div>
+      </div>
+    </section>
+
+    <section class="metrics-section">
+      <div class="container">
+        <div class="metrics-inner">
+          <div class="metric-item">
             <div class="metric-value">3</div>
-            <div class="metric-label">Пиццерий</div>
+            <div class="metric-label">Пиццерии</div>
           </div>
-          <div class="metric-cell">
+          <div class="metric-item">
             <div class="metric-value">47</div>
             <div class="metric-label">Сотрудников</div>
           </div>
-          <div class="metric-cell">
+          <div class="metric-item">
             <div class="metric-value accent">12</div>
             <div class="metric-label">Документов</div>
           </div>
         </div>
-      </section>
-    </div>
+      </div>
+    </section>
   `;
 
-  const list = page.querySelector('#sections-list')!;
-  NAV_ITEMS.forEach(item => list.appendChild(buildSectionRow(item)));
+  const grid = page.querySelector('#cards-grid')!;
+  NAV_ITEMS.forEach(item => grid.appendChild(buildCard(item)));
+
+  page.querySelector('#btn-open')!.addEventListener('click', () => navigate('/regulations'));
 
   return page;
 }
