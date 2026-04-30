@@ -6,6 +6,7 @@ import { renderContacts } from './pages/contacts';
 import { renderOrgChart } from './pages/orgchart';
 import { renderAdmin } from './pages/admin';
 import { renderAdminEmployee } from './pages/admin-employee';
+import { renderAdminDepartment } from './pages/admin-department';
 
 function matchRoute(path: string): () => HTMLElement {
   if (path === '/')             return renderHome;
@@ -15,10 +16,15 @@ function matchRoute(path: string): () => HTMLElement {
   if (path === '/contacts')     return renderContacts;
   if (path === '/org')          return renderOrgChart;
   if (path === '/admin')        return renderAdmin;
-  if (path === '/admin/employee/new') return () => renderAdminEmployee();
 
-  const editMatch = path.match(/^\/admin\/employee\/(.+)$/);
-  if (editMatch) return () => renderAdminEmployee(editMatch[1]);
+  if (path === '/admin/employee/new')   return () => renderAdminEmployee();
+  if (path === '/admin/department/new') return () => renderAdminDepartment();
+
+  const empMatch  = path.match(/^\/admin\/employee\/(.+)$/);
+  if (empMatch)  return () => renderAdminEmployee(empMatch[1]);
+
+  const deptMatch = path.match(/^\/admin\/department\/(.+)$/);
+  if (deptMatch) return () => renderAdminDepartment(deptMatch[1]);
 
   return renderHome;
 }
@@ -27,8 +33,7 @@ let outlet: HTMLElement | null = null;
 
 function renderCurrent(): void {
   if (!outlet) return;
-  const render = matchRoute(window.location.pathname);
-  outlet.replaceChildren(render());
+  outlet.replaceChildren(matchRoute(window.location.pathname)());
 }
 
 export function navigate(path: string): void {

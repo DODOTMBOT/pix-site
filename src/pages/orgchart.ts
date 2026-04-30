@@ -1,5 +1,5 @@
 import { navigate } from '../router';
-import { getEmployees, getEmployee } from '../services/storage';
+import { getEmployees, getDepartments } from '../services/storage';
 import { renderOrgTree } from '../components/org-tree';
 import { getAvatarColor, getInitials } from '../components/orgchart-node';
 import type { Employee } from '../types';
@@ -7,28 +7,25 @@ import type { Employee } from '../types';
 function renderModal(emp: Employee, allEmployees: Employee[], onClose: () => void): HTMLElement {
   const overlay = document.createElement('div');
   overlay.style.cssText = `
-    position: fixed; inset: 0; background: rgba(0,0,0,0.45);
-    z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px;
+    position:fixed;inset:0;background:rgba(0,0,0,0.45);
+    z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;
   `;
 
-  const subordinates = allEmployees.filter(e => (Array.isArray(e.parentIds) ? e.parentIds : []).includes(emp.id));
-  const managers = (Array.isArray(emp.parentIds) ? emp.parentIds : []).map(pid => getEmployee(pid)).filter((m): m is NonNullable<typeof m> => !!m);
+  const subordinates = allEmployees.filter(e => e.departmentId === emp.departmentId && e.id !== emp.id);
 
   const avatarContent = emp.avatar && emp.avatar.startsWith('data:')
     ? `<img src="${emp.avatar}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;margin:0 auto 16px;display:block;">`
     : `<div style="width:72px;height:72px;border-radius:50%;background:${getAvatarColor(emp.name)};color:#fff;font-size:26px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">${getInitials(emp.name)}</div>`;
 
-  const extraHtml = emp.extraFields.length
-    ? emp.extraFields.map(f => `
-        <div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid #f3f4f6;">
-          <span style="font-size:13px;color:#6b7280;min-width:120px;">${f.label}</span>
-          <span style="font-size:13px;color:#111;">${f.value}</span>
-        </div>`).join('')
-    : '';
+  const extraHtml = (emp.extraFields ?? []).map(f => `
+    <div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid #f3f4f6;">
+      <span style="font-size:13px;color:#6b7280;min-width:120px;">${f.label}</span>
+      <span style="font-size:13px;color:#111;">${f.value}</span>
+    </div>`).join('');
 
   const subHtml = subordinates.length
     ? `<div style="margin-top:16px;">
-        <div style="font-size:11px;font-weight:600;letter-spacing:0.08em;color:#6b7280;text-transform:uppercase;margin-bottom:10px;">Подчинённые</div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.08em;color:#6b7280;text-transform:uppercase;margin-bottom:10px;">Коллеги по отделу</div>
         ${subordinates.map(s => `<div class="modal-sub-link" data-id="${s.id}" style="font-size:13px;color:#f97316;cursor:pointer;padding:4px 0;">${s.name} — ${s.position}</div>`).join('')}
       </div>`
     : '';
@@ -41,10 +38,10 @@ function renderModal(emp: Employee, allEmployees: Employee[], onClose: () => voi
       <div style="text-align:center;font-size:14px;color:#6b7280;margin-bottom:20px;">${emp.position} · ${emp.department}</div>
       <div style="border-top:1px solid #f3f4f6;padding-top:16px;">
         ${[
+          ['Отдел', emp.department],
           ['Пиццерия', emp.pizzeria],
           ['Email', emp.email],
           ['Телефон', emp.phone],
-          ['Руководитель', managers.length ? managers.map(m => m.name).join(', ') : '—'],
         ].filter(([, v]) => v).map(([l, v]) => `
           <div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid #f3f4f6;">
             <span style="font-size:13px;color:#6b7280;min-width:120px;">${l}</span>
@@ -78,21 +75,22 @@ export function renderOrgChart(): HTMLElement {
   const page = document.createElement('div');
   page.className = 'page-enter';
 
-  const employees = getEmployees();
+  const employees    = getEmployees();
+  const departments  = getDepartments();
 
   let treeContent: HTMLElement;
-  if (employees.length === 0) {
+  if (departments.length === 0) {
     treeContent = document.createElement('div');
     treeContent.innerHTML = `
       <div style="text-align:center;padding:80px 20px;">
         <div style="font-size:16px;font-weight:600;margin-bottom:8px;">Структура не настроена</div>
-        <div style="font-size:14px;color:#6b7280;margin-bottom:24px;">Перейдите в Админку чтобы добавить сотрудников</div>
+        <div style="font-size:14px;color:#6b7280;margin-bottom:24px;">Перейдите в Админку чтобы добавить отделы</div>
         <button class="btn btn-primary" id="goto-admin">Открыть Админку</button>
       </div>
     `;
     treeContent.querySelector('#goto-admin')!.addEventListener('click', () => navigate('/admin'));
   } else {
-    treeContent = renderOrgTree(employees, emp => {
+    treeContent = renderOrgTree(employees, departments, emp => {
       const modal = renderModal(emp, employees, () => modal.remove());
       document.body.appendChild(modal);
     });
@@ -100,7 +98,7 @@ export function renderOrgChart(): HTMLElement {
 
   page.innerHTML = `
     <div class="container">
-      <section style="padding: 40px 0 64px;">
+      <section style="padding:40px 0 64px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;">
           <div>
             <div style="font-size:11px;font-weight:600;letter-spacing:0.12em;color:#6b7280;text-transform:uppercase;margin-bottom:8px;">Организация</div>

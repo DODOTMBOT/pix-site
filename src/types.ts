@@ -10,15 +10,23 @@ export interface NavItem {
   badge?: { text: string; variant: 'orange' | 'gray' };
 }
 
+export interface Department {
+  id: string;
+  name: string;
+  leaderId: string | null;
+  parentDepartmentId: string | null;
+  color?: string;
+}
+
 export interface Employee {
   id: string;
   name: string;
   position: string;
-  department: string;
+  department: string;       // display name, synced from Department.name on save
+  departmentId: string | null;
   pizzeria: string;
   email: string;
   phone: string;
-  parentIds: string[];
   relatedIds: string[];
   extraFields: { label: string; value: string }[];
   avatar?: string;

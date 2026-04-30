@@ -1,9 +1,9 @@
 import { navigate } from '../router';
-import { getEmployees, getEmployee, addEmployee, updateEmployee } from '../services/storage';
+import { getEmployee, addEmployee, updateEmployee, getDepartments } from '../services/storage';
 import type { Employee } from '../types';
 
 function inputStyle(hasError = false): string {
-  return `width:100%;padding:9px 12px;border:1.5px solid ${hasError ? '#ef4444' : '#e5e7eb'};border-radius:8px;font-size:14px;font-family:var(--font);color:#111;outline:none;transition:border-color 0.15s;`;
+  return `width:100%;padding:9px 12px;border:1.5px solid ${hasError ? '#ef4444' : '#e5e7eb'};border-radius:8px;font-size:14px;font-family:var(--font);color:#111;outline:none;transition:border-color 0.15s;background:#fff;`;
 }
 
 function labelHtml(text: string, required = false): string {
@@ -14,9 +14,8 @@ export function renderAdminEmployee(empId?: string): HTMLElement {
   const page = document.createElement('div');
   page.className = 'page-enter';
 
-  const isNew = !empId;
+  const isNew    = !empId;
   const existing = empId ? getEmployee(empId) : undefined;
-  const allEmployees = getEmployees().filter(e => e.id !== empId);
 
   let extraFields: { label: string; value: string }[] = existing?.extraFields ? [...existing.extraFields] : [];
   let avatarBase64: string | undefined = existing?.avatar;
@@ -28,22 +27,13 @@ export function renderAdminEmployee(empId?: string): HTMLElement {
   function buildForm(): HTMLElement {
     const wrap = document.createElement('div');
 
-    const departments = [...new Set(getEmployees().map(e => e.department))].filter(Boolean);
-    const datalistOpts = departments.map(d => `<option value="${d}">`).join('');
-
-    const parentCheckboxes = allEmployees.map(e => `
-      <label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;cursor:pointer;">
-        <input type="checkbox" class="parent-cb" value="${e.id}" ${existing?.parentIds.includes(e.id) ? 'checked' : ''} style="accent-color:var(--accent);width:15px;height:15px;">
-        ${e.name} — ${e.position}
-      </label>
-    `).join('');
-
-    const relatedCheckboxes = allEmployees.map(e => `
-      <label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;cursor:pointer;">
-        <input type="checkbox" value="${e.id}" ${existing?.relatedIds.includes(e.id) ? 'checked' : ''} style="accent-color:var(--accent);width:15px;height:15px;">
-        ${e.name} — ${e.position}
-      </label>
-    `).join('');
+    const departments   = getDepartments();
+    const deptOptions   = [
+      `<option value="">— Не выбран —</option>`,
+      ...departments.map(d =>
+        `<option value="${d.id}" ${existing?.departmentId === d.id ? 'selected' : ''}>${d.name}</option>`
+      ),
+    ].join('');
 
     const extraHtml = extraFields.map((f, i) => `
       <div class="extra-row" data-index="${i}" style="display:flex;gap:8px;margin-bottom:8px;">
@@ -66,12 +56,11 @@ export function renderAdminEmployee(empId?: string): HTMLElement {
           </h1>
           <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
             <form id="emp-form" novalidate>
-              <datalist id="dept-list">${datalistOpts}</datalist>
 
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
                 <div>
                   ${labelHtml('ФИО', true)}
-                  <input id="f-name" type="text" value="${existing?.name ?? ''}" style="${inputStyle()}" placeholder="Иванов Иван Иванович">
+                  <input id="f-name" type="text" value="${existing?.name ?? ''}" style="${inputStyle()}" placeholder="Иванов Иван">
                   <div class="err" id="err-name" style="font-size:12px;color:#ef4444;margin-top:4px;display:none;"></div>
                 </div>
                 <div>
@@ -83,9 +72,10 @@ export function renderAdminEmployee(empId?: string): HTMLElement {
 
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
                 <div>
-                  ${labelHtml('Отдел', true)}
-                  <input id="f-dept" type="text" list="dept-list" value="${existing?.department ?? ''}" style="${inputStyle()}" placeholder="Управление">
-                  <div class="err" id="err-dept" style="font-size:12px;color:#ef4444;margin-top:4px;display:none;"></div>
+                  ${labelHtml('Отдел')}
+                  <select id="f-dept" style="${inputStyle()}">
+                    ${deptOptions}
+                  </select>
                 </div>
                 <div>
                   ${labelHtml('Пиццерия')}
@@ -103,22 +93,6 @@ export function renderAdminEmployee(empId?: string): HTMLElement {
                   <input id="f-phone" type="tel" value="${existing?.phone ?? ''}" style="${inputStyle()}" placeholder="+7 900 000-00-00">
                 </div>
               </div>
-
-              ${allEmployees.length > 0 ? `
-              <div style="margin-bottom:16px;">
-                ${labelHtml('Руководители')}
-                <div style="border:1.5px solid #e5e7eb;border-radius:8px;padding:10px 14px;max-height:160px;overflow-y:auto;" id="parent-list">
-                  ${parentCheckboxes}
-                </div>
-              </div>` : ''}
-
-              ${allEmployees.length > 0 ? `
-              <div style="margin-bottom:16px;">
-                ${labelHtml('Смежные сотрудники')}
-                <div style="border:1.5px solid #e5e7eb;border-radius:8px;padding:10px 14px;max-height:160px;overflow-y:auto;" id="related-list">
-                  ${relatedCheckboxes}
-                </div>
-              </div>` : ''}
 
               <div style="margin-bottom:16px;">
                 ${labelHtml('Аватар')}
@@ -148,24 +122,24 @@ export function renderAdminEmployee(empId?: string): HTMLElement {
       </div>
     `;
 
-    // focus orange outline
+    // Focus highlights
     wrap.querySelectorAll<HTMLInputElement>('input[type=text],input[type=email],input[type=tel]').forEach(el => {
       el.addEventListener('focus', () => { el.style.borderColor = 'var(--accent)'; });
-      el.addEventListener('blur', () => { el.style.borderColor = '#e5e7eb'; });
+      el.addEventListener('blur',  () => { el.style.borderColor = '#e5e7eb'; });
+    });
+    wrap.querySelectorAll<HTMLSelectElement>('select').forEach(el => {
+      el.addEventListener('focus', () => { el.style.borderColor = 'var(--accent)'; });
+      el.addEventListener('blur',  () => { el.style.borderColor = '#e5e7eb'; });
     });
 
-    wrap.querySelector('#cancel-btn')!.addEventListener('click', () => navigate('/admin'));
+    wrap.querySelector('#cancel-btn')!.addEventListener('click',  () => navigate('/admin'));
     wrap.querySelector('#cancel-btn2')!.addEventListener('click', () => navigate('/admin'));
 
-    // avatar upload
     wrap.querySelector<HTMLInputElement>('#f-avatar')!.addEventListener('change', e => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = ev => {
-        avatarBase64 = ev.target?.result as string;
-        render();
-      };
+      reader.onload = ev => { avatarBase64 = ev.target?.result as string; render(); };
       reader.readAsDataURL(file);
     });
 
@@ -174,7 +148,6 @@ export function renderAdminEmployee(empId?: string): HTMLElement {
       render();
     });
 
-    // extra fields
     wrap.querySelector('#add-extra')!.addEventListener('click', () => {
       extraFields.push({ label: '', value: '' });
       render();
@@ -182,8 +155,7 @@ export function renderAdminEmployee(empId?: string): HTMLElement {
 
     wrap.querySelectorAll<HTMLButtonElement>('.extra-remove').forEach(btn => {
       btn.addEventListener('click', () => {
-        const idx = Number(btn.dataset['index']);
-        extraFields.splice(idx, 1);
+        extraFields.splice(Number(btn.dataset['index']), 1);
         render();
       });
     });
@@ -198,45 +170,37 @@ export function renderAdminEmployee(empId?: string): HTMLElement {
       });
     });
 
-    // form submit
     wrap.querySelector<HTMLFormElement>('#emp-form')!.addEventListener('submit', e => {
       e.preventDefault();
 
-      const name = wrap.querySelector<HTMLInputElement>('#f-name')!.value.trim();
+      const name     = wrap.querySelector<HTMLInputElement>('#f-name')!.value.trim();
       const position = wrap.querySelector<HTMLInputElement>('#f-position')!.value.trim();
-      const department = wrap.querySelector<HTMLInputElement>('#f-dept')!.value.trim();
-
       let valid = true;
 
-      function setError(id: string, msg: string | null): void {
-        const el = wrap.querySelector<HTMLElement>(`#${id}`)!;
-        const input = wrap.querySelector<HTMLInputElement>(`#${id.replace('err-', 'f-')}`)!;
+      function setError(errId: string, inputId: string, msg: string | null): void {
+        const errEl   = wrap.querySelector<HTMLElement>(`#${errId}`)!;
+        const inputEl = wrap.querySelector<HTMLInputElement>(`#${inputId}`)!;
         if (msg) {
-          el.textContent = msg;
-          el.style.display = 'block';
-          input.style.borderColor = '#ef4444';
+          errEl.textContent = msg;
+          errEl.style.display = 'block';
+          inputEl.style.borderColor = '#ef4444';
           valid = false;
         } else {
-          el.style.display = 'none';
-          input.style.borderColor = '#e5e7eb';
+          errEl.style.display = 'none';
+          inputEl.style.borderColor = '#e5e7eb';
         }
       }
 
-      setError('err-name', name ? null : 'Введите ФИО');
-      setError('err-position', position ? null : 'Введите должность');
-      setError('err-dept', department ? null : 'Введите отдел');
+      setError('err-name',     'f-name',     name     ? null : 'Введите ФИО');
+      setError('err-position', 'f-position', position ? null : 'Введите должность');
 
       if (!valid) return;
 
-      const pizzeria = wrap.querySelector<HTMLInputElement>('#f-pizzeria')!.value.trim();
-      const email = wrap.querySelector<HTMLInputElement>('#f-email')!.value.trim();
-      const phone = wrap.querySelector<HTMLInputElement>('#f-phone')!.value.trim();
-
-      const parentIds = [...wrap.querySelectorAll<HTMLInputElement>('#parent-list .parent-cb:checked')]
-        .map(cb => cb.value);
-
-      const relatedIds = [...wrap.querySelectorAll<HTMLInputElement>('#related-list input:checked')]
-        .map(cb => cb.value);
+      const deptId       = wrap.querySelector<HTMLSelectElement>('#f-dept')!.value || null;
+      const deptName     = deptId ? (getDepartments().find(d => d.id === deptId)?.name ?? '') : '';
+      const pizzeria     = wrap.querySelector<HTMLInputElement>('#f-pizzeria')!.value.trim();
+      const email        = wrap.querySelector<HTMLInputElement>('#f-email')!.value.trim();
+      const phone        = wrap.querySelector<HTMLInputElement>('#f-phone')!.value.trim();
 
       wrap.querySelectorAll<HTMLElement>('.extra-row').forEach(row => {
         const idx = Number(row.dataset['index']);
@@ -245,8 +209,11 @@ export function renderAdminEmployee(empId?: string): HTMLElement {
       });
 
       const data: Omit<Employee, 'id'> = {
-        name, position, department, pizzeria, email, phone,
-        parentIds, relatedIds,
+        name, position,
+        department: deptName,
+        departmentId: deptId,
+        pizzeria, email, phone,
+        relatedIds: existing?.relatedIds ?? [],
         extraFields: extraFields.filter(f => f.label),
         avatar: avatarBase64,
       };
