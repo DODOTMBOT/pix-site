@@ -203,17 +203,23 @@
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
-  padding: 16px;
-  width: 200px;
+  padding: 16px 12px;
+  width: 160px;
+  min-height: 120px;
   text-align: center;
   cursor: pointer;
-  transition: box-shadow 0.2s, transform 0.2s;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: box-shadow 0.15s, border-color 0.15s;
   flex-shrink: 0;
 }
 
 .org-node:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
-  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
+  border-color: #f97316;
 }
 
 .org-avatar {
@@ -226,58 +232,29 @@
   font-size: 18px;
   font-weight: 700;
   color: white;
-  margin: 0 auto 10px;
+  margin: 0 auto 8px;
+  flex-shrink: 0;
 }
 
 .org-level {
   display: flex;
-  gap: 40px;
+  flex-direction: row;
+  gap: 24px;
   justify-content: center;
-  align-items: flex-start;
 }
 
-.org-branch {
+.org-col {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 16px;
 }
 
-.org-connector {
-  width: 1px;
-  height: 24px;
-  background: #d1d5db;
-  flex-shrink: 0;
-}
-
-.org-children-wrap {
+.org-children {
   display: flex;
-  align-items: flex-start;
-  gap: 0;
-  position: relative;
-}
-
-/* horizontal bar above children */
-.org-children-wrap::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  height: 1px;
-  background: #d1d5db;
-  /* width set by JS via inline style or covers full child group */
-  width: 100%;
-}
-
-.org-child-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.org-sibling-sep {
-  width: 40px;
-  flex-shrink: 0;
+  flex-direction: row;
+  gap: 16px;
+  margin-top: 16px;
 }
 
 /* ─── Responsive ──────────────────────────────────── */
