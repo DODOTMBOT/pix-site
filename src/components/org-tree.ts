@@ -14,21 +14,32 @@ function buildBranch(
   const branch = document.createElement('div');
   branch.className = 'org-branch';
 
-  branch.appendChild(renderOrgNode(employee, onClick));
+  const nodeWrap = document.createElement('div');
+  nodeWrap.appendChild(renderOrgNode(employee, onClick));
+
+  // If this employee has multiple managers, show secondary ones as a badge
+  const secondaryManagerIds = safeParentIds(employee).slice(1);
+  if (secondaryManagerIds.length > 0) {
+    const names = secondaryManagerIds
+      .map(pid => allEmployees.find(e => e.id === pid)?.name)
+      .filter(Boolean)
+      .join(', ');
+    if (names) {
+      const badge = document.createElement('div');
+      badge.style.cssText = 'font-size:11px;color:#9ca3af;text-align:center;margin-top:4px;padding:0 4px;';
+      badge.textContent = `Также: ${names}`;
+      nodeWrap.appendChild(badge);
+    }
+  }
+
+  branch.appendChild(nodeWrap);
 
   if (visited.has(employee.id)) return branch;
   visited.add(employee.id);
 
-  // Primary children: this employee is their first (primary) parent
-  const primaryChildren = allEmployees.filter(e => safeParentIds(e)[0] === employee.id);
-
-  // Secondary children: this employee is a non-primary parent — render as dashed reference only
-  const secondaryChildren = allEmployees.filter(e => {
-    const ids = safeParentIds(e);
-    return ids.length > 1 && ids.indexOf(employee.id) > 0;
-  });
-
-  if (primaryChildren.length === 0 && secondaryChildren.length === 0) return branch;
+  // Only primary children: those whose first parent is this employee
+  const children = allEmployees.filter(e => safeParentIds(e)[0] === employee.id);
+  if (children.length === 0) return branch;
 
   const connector = document.createElement('div');
   connector.className = 'org-connector';
@@ -37,37 +48,17 @@ function buildBranch(
   const childrenWrap = document.createElement('div');
   childrenWrap.className = 'org-children-wrap';
 
-  type ChildItem = { emp: Employee; secondary: boolean };
-  const items: ChildItem[] = [
-    ...primaryChildren.map(e => ({ emp: e, secondary: false })),
-    ...secondaryChildren.map(e => ({ emp: e, secondary: true })),
-  ];
-
-  items.forEach(({ emp, secondary }, i) => {
+  children.forEach((child, i) => {
     const lineWrap = document.createElement('div');
     lineWrap.className = 'org-child-col';
 
     const topLine = document.createElement('div');
     topLine.className = 'org-connector';
-    if (secondary) {
-      topLine.style.borderLeftStyle = 'dashed';
-      topLine.style.borderColor = '#d1d5db';
-    }
     lineWrap.appendChild(topLine);
-
-    if (secondary) {
-      const refNode = renderOrgNode(emp, onClick);
-      refNode.style.borderStyle = 'dashed';
-      refNode.style.borderColor = '#d1d5db';
-      refNode.style.opacity = '0.75';
-      lineWrap.appendChild(refNode);
-    } else {
-      lineWrap.appendChild(buildBranch(emp, allEmployees, onClick, new Set(visited)));
-    }
-
+    lineWrap.appendChild(buildBranch(child, allEmployees, onClick, new Set(visited)));
     childrenWrap.appendChild(lineWrap);
 
-    if (i < items.length - 1) {
+    if (i < children.length - 1) {
       const sep = document.createElement('div');
       sep.className = 'org-sibling-sep';
       childrenWrap.appendChild(sep);
