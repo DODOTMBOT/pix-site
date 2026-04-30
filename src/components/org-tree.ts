@@ -6,7 +6,7 @@ function avatarHtml(emp: Employee, size: number): string {
   if (emp.avatar && emp.avatar.startsWith('data:')) {
     return `<img src="${emp.avatar}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;flex-shrink:0;">`;
   }
-  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${getAvatarColor(emp.name)};color:#fff;font-size:${fs}px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${getInitials(emp.name)}</div>`;
+  return `<div class="emp-avatar" style="width:${size}px;height:${size}px;font-size:${fs}px;background:${getAvatarColor(emp.name)};">${getInitials(emp.name)}</div>`;
 }
 
 function buildEmpNode(
@@ -18,7 +18,7 @@ function buildEmpNode(
   const card = document.createElement('div');
   card.className = 'emp-card';
   card.innerHTML = `
-    ${avatarHtml(emp, 32)}
+    ${avatarHtml(emp, 28)}
     <div class="emp-info">
       <div class="emp-name">${emp.name}</div>
       <div class="emp-position">${emp.position}</div>
@@ -31,7 +31,6 @@ function buildEmpNode(
   const nextVisited = new Set(visited);
   nextVisited.add(emp.id);
 
-  // Subordinates only within this department
   const subordinates = deptEmployees.filter(e => e.managerId === emp.id);
   if (subordinates.length === 0) return card;
 
@@ -49,43 +48,37 @@ function buildEmpNode(
 
 function buildDeptBlock(
   dept: Department,
-  allDepts: Department[],
   allEmployees: Employee[],
-  onClick: (emp: Employee) => void,
-  deptVisited: Set<string>
+  onClick: (emp: Employee) => void
 ): HTMLElement {
   const block = document.createElement('div');
   block.className = 'dept-block';
 
-  // ── Header: dept title + leader ──────────────────────────────
-  const header = document.createElement('div');
-  header.className = 'dept-header';
-
+  // Title
   const titleEl = document.createElement('div');
   titleEl.className = 'dept-title';
   titleEl.textContent = dept.name;
-  header.appendChild(titleEl);
+  block.appendChild(titleEl);
 
+  // Leader
   const leader = dept.leaderId ? allEmployees.find(e => e.id === dept.leaderId) : null;
   if (leader) {
     const leaderEl = document.createElement('div');
     leaderEl.className = 'dept-leader';
     leaderEl.innerHTML = `
       ${avatarHtml(leader, 28)}
-      <span class="dept-leader-name">${leader.name}</span>
-      <span class="dept-leader-pos">· ${leader.position}</span>
+      <div>
+        <span class="dept-leader-name">${leader.name}</span>
+        <div class="dept-leader-pos">${leader.position}</div>
+      </div>
     `;
     leaderEl.addEventListener('click', () => onClick(leader));
-    header.appendChild(leaderEl);
+    block.appendChild(leaderEl);
   }
 
-  block.appendChild(header);
-
-  // ── Members rendered recursively ─────────────────────────────
+  // Members
   const deptEmps   = allEmployees.filter(e => e.departmentId === dept.id && e.id !== dept.leaderId);
   const deptEmpIds = new Set(deptEmps.map(e => e.id));
-
-  // Root members: no managerId, or manager is outside this dept
   const rootMembers = deptEmps.filter(e => !e.managerId || !deptEmpIds.has(e.managerId));
 
   if (rootMembers.length > 0) {
@@ -97,22 +90,16 @@ function buildDeptBlock(
     block.appendChild(membersWrap);
   }
 
-  // ── Child departments ────────────────────────────────────────
-  if (deptVisited.has(dept.id)) return block;
-  const nextDeptVisited = new Set(deptVisited);
-  nextDeptVisited.add(dept.id);
-
-  const children = allDepts.filter(d => d.parentDepartmentId === dept.id);
-  if (children.length > 0) {
-    const childrenWrap = document.createElement('div');
-    childrenWrap.className = 'dept-children';
-    children.forEach(child => {
-      childrenWrap.appendChild(buildDeptBlock(child, allDepts, allEmployees, onClick, nextDeptVisited));
-    });
-    block.appendChild(childrenWrap);
-  }
-
   return block;
+}
+
+function getDeptLevel(deptId: string, departments: Department[], memo: Map<string, number> = new Map()): number {
+  if (memo.has(deptId)) return memo.get(deptId)!;
+  const dept = departments.find(d => d.id === deptId);
+  if (!dept?.parentDepartmentId) { memo.set(deptId, 0); return 0; }
+  const level = getDeptLevel(dept.parentDepartmentId, departments, memo) + 1;
+  memo.set(deptId, level);
+  return level;
 }
 
 export function renderOrgTree(
@@ -120,15 +107,35 @@ export function renderOrgTree(
   departments: Department[],
   onClick: (emp: Employee) => void
 ): HTMLElement {
-  const chart = document.createElement('div');
-  chart.className = 'org-chart';
+  const wrap = document.createElement('div');
+  wrap.className = 'org-wrap';
 
-  const roots = departments.filter(d => d.parentDepartmentId === null);
-  if (roots.length === 0) {
-    chart.innerHTML = `<div style="text-align:center;padding:40px;color:#9ca3af;font-size:14px;">Отделы не настроены</div>`;
-    return chart;
+  if (departments.length === 0) {
+    wrap.innerHTML = `<div style="text-align:center;padding:40px;color:#9ca3af;font-size:14px;">Отделы не настроены</div>`;
+    return wrap;
   }
 
-  roots.forEach(root => chart.appendChild(buildDeptBlock(root, departments, employees, onClick, new Set())));
-  return chart;
+  // Group departments by depth level
+  const memo = new Map<string, number>();
+  const levels = new Map<number, Department[]>();
+  departments.forEach(dept => {
+    const lvl = getDeptLevel(dept.id, departments, memo);
+    if (!levels.has(lvl)) levels.set(lvl, []);
+    levels.get(lvl)!.push(dept);
+  });
+
+  const row = document.createElement('div');
+  row.className = 'org-row';
+
+  Array.from(levels.entries())
+    .sort(([a], [b]) => a - b)
+    .forEach(([, depts]) => {
+      const col = document.createElement('div');
+      col.className = 'org-col';
+      depts.forEach(dept => col.appendChild(buildDeptBlock(dept, employees, onClick)));
+      row.appendChild(col);
+    });
+
+  wrap.appendChild(row);
+  return wrap;
 }
