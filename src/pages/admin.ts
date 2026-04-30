@@ -16,14 +16,14 @@ export function renderAdmin(): HTMLElement {
     const rowsHtml = employees.length === 0
       ? `<tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af;font-size:14px;">Сотрудников нет</td></tr>`
       : employees.map(emp => {
-          const manager = emp.parentId ? getEmployee(emp.parentId) : null;
+          const managerNames = emp.parentIds.map(pid => getEmployee(pid)?.name).filter(Boolean).join(', ') || '—';
           return `
             <tr class="admin-row" data-id="${emp.id}">
               <td style="padding:13px 16px;font-weight:500;">${emp.name}</td>
               <td style="padding:13px 16px;color:#6b7280;">${emp.position}</td>
               <td style="padding:13px 16px;color:#6b7280;">${emp.department}</td>
               <td style="padding:13px 16px;color:#6b7280;">${emp.pizzeria}</td>
-              <td style="padding:13px 16px;color:#6b7280;">${manager ? manager.name : '—'}</td>
+              <td style="padding:13px 16px;color:#6b7280;">${managerNames}</td>
               <td style="padding:13px 16px;">
                 <div style="display:flex;gap:8px;">
                   <button class="btn-edit" data-id="${emp.id}" style="font-size:12px;padding:5px 12px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;cursor:pointer;color:#374151;">Изменить</button>

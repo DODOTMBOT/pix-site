@@ -2,8 +2,6 @@ import { navigate } from '../router';
 import { getEmployees, getEmployee, addEmployee, updateEmployee } from '../services/storage';
 import type { Employee } from '../types';
 
-const PIZZERIAS = ['Все пиццерии', 'ул. Ленина', 'ул. Мира', 'ул. Победы'];
-
 function inputStyle(hasError = false): string {
   return `width:100%;padding:9px 12px;border:1.5px solid ${hasError ? '#ef4444' : '#e5e7eb'};border-radius:8px;font-size:14px;font-family:var(--font);color:#111;outline:none;transition:border-color 0.15s;`;
 }
@@ -33,9 +31,12 @@ export function renderAdminEmployee(empId?: string): HTMLElement {
     const departments = [...new Set(getEmployees().map(e => e.department))].filter(Boolean);
     const datalistOpts = departments.map(d => `<option value="${d}">`).join('');
 
-    const managerOpts = allEmployees.map(e =>
-      `<option value="${e.id}" ${existing?.parentId === e.id ? 'selected' : ''}>${e.name} — ${e.position}</option>`
-    ).join('');
+    const parentCheckboxes = allEmployees.map(e => `
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;cursor:pointer;">
+        <input type="checkbox" class="parent-cb" value="${e.id}" ${existing?.parentIds.includes(e.id) ? 'checked' : ''} style="accent-color:var(--accent);width:15px;height:15px;">
+        ${e.name} — ${e.position}
+      </label>
+    `).join('');
 
     const relatedCheckboxes = allEmployees.map(e => `
       <label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;cursor:pointer;">
@@ -43,10 +44,6 @@ export function renderAdminEmployee(empId?: string): HTMLElement {
         ${e.name} — ${e.position}
       </label>
     `).join('');
-
-    const pizzeriaOpts = PIZZERIAS.map(p =>
-      `<option value="${p}" ${(existing?.pizzeria ?? 'Все пиццерии') === p ? 'selected' : ''}>${p}</option>`
-    ).join('');
 
     const extraHtml = extraFields.map((f, i) => `
       <div class="extra-row" data-index="${i}" style="display:flex;gap:8px;margin-bottom:8px;">
@@ -92,9 +89,7 @@ export function renderAdminEmployee(empId?: string): HTMLElement {
                 </div>
                 <div>
                   ${labelHtml('Пиццерия')}
-                  <select id="f-pizzeria" style="${inputStyle()}">
-                    ${pizzeriaOpts}
-                  </select>
+                  <input id="f-pizzeria" type="text" value="${existing?.pizzeria ?? ''}" style="${inputStyle()}" placeholder="ул. Ленина">
                 </div>
               </div>
 
@@ -109,13 +104,13 @@ export function renderAdminEmployee(empId?: string): HTMLElement {
                 </div>
               </div>
 
+              ${allEmployees.length > 0 ? `
               <div style="margin-bottom:16px;">
-                ${labelHtml('Руководитель')}
-                <select id="f-parent" style="${inputStyle()}">
-                  <option value="">Нет (корневой)</option>
-                  ${managerOpts}
-                </select>
-              </div>
+                ${labelHtml('Руководители')}
+                <div style="border:1.5px solid #e5e7eb;border-radius:8px;padding:10px 14px;max-height:160px;overflow-y:auto;" id="parent-list">
+                  ${parentCheckboxes}
+                </div>
+              </div>` : ''}
 
               ${allEmployees.length > 0 ? `
               <div style="margin-bottom:16px;">
@@ -154,7 +149,7 @@ export function renderAdminEmployee(empId?: string): HTMLElement {
     `;
 
     // focus orange outline
-    wrap.querySelectorAll<HTMLInputElement | HTMLSelectElement>('input,select').forEach(el => {
+    wrap.querySelectorAll<HTMLInputElement>('input[type=text],input[type=email],input[type=tel]').forEach(el => {
       el.addEventListener('focus', () => { el.style.borderColor = 'var(--accent)'; });
       el.addEventListener('blur', () => { el.style.borderColor = '#e5e7eb'; });
     });
@@ -193,7 +188,6 @@ export function renderAdminEmployee(empId?: string): HTMLElement {
       });
     });
 
-    // sync extra field values on input
     wrap.querySelectorAll<HTMLElement>('.extra-row').forEach(row => {
       const idx = Number(row.dataset['index']);
       row.querySelector<HTMLInputElement>('.extra-label')!.addEventListener('input', e => {
@@ -208,9 +202,9 @@ export function renderAdminEmployee(empId?: string): HTMLElement {
     wrap.querySelector<HTMLFormElement>('#emp-form')!.addEventListener('submit', e => {
       e.preventDefault();
 
-      const name = (wrap.querySelector<HTMLInputElement>('#f-name')!).value.trim();
-      const position = (wrap.querySelector<HTMLInputElement>('#f-position')!).value.trim();
-      const department = (wrap.querySelector<HTMLInputElement>('#f-dept')!).value.trim();
+      const name = wrap.querySelector<HTMLInputElement>('#f-name')!.value.trim();
+      const position = wrap.querySelector<HTMLInputElement>('#f-position')!.value.trim();
+      const department = wrap.querySelector<HTMLInputElement>('#f-dept')!.value.trim();
 
       let valid = true;
 
@@ -234,15 +228,16 @@ export function renderAdminEmployee(empId?: string): HTMLElement {
 
       if (!valid) return;
 
-      const parentId = (wrap.querySelector<HTMLSelectElement>('#f-parent')!).value || null;
-      const pizzeria = (wrap.querySelector<HTMLSelectElement>('#f-pizzeria')!).value;
-      const email = (wrap.querySelector<HTMLInputElement>('#f-email')!).value.trim();
-      const phone = (wrap.querySelector<HTMLInputElement>('#f-phone')!).value.trim();
+      const pizzeria = wrap.querySelector<HTMLInputElement>('#f-pizzeria')!.value.trim();
+      const email = wrap.querySelector<HTMLInputElement>('#f-email')!.value.trim();
+      const phone = wrap.querySelector<HTMLInputElement>('#f-phone')!.value.trim();
+
+      const parentIds = [...wrap.querySelectorAll<HTMLInputElement>('#parent-list .parent-cb:checked')]
+        .map(cb => cb.value);
 
       const relatedIds = [...wrap.querySelectorAll<HTMLInputElement>('#related-list input:checked')]
         .map(cb => cb.value);
 
-      // sync latest extra field values
       wrap.querySelectorAll<HTMLElement>('.extra-row').forEach(row => {
         const idx = Number(row.dataset['index']);
         extraFields[idx].label = row.querySelector<HTMLInputElement>('.extra-label')!.value;
@@ -251,7 +246,7 @@ export function renderAdminEmployee(empId?: string): HTMLElement {
 
       const data: Omit<Employee, 'id'> = {
         name, position, department, pizzeria, email, phone,
-        parentId, relatedIds,
+        parentIds, relatedIds,
         extraFields: extraFields.filter(f => f.label),
         avatar: avatarBase64,
       };

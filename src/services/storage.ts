@@ -11,7 +11,7 @@ const SEED_DATA: Employee[] = [
     pizzeria: 'Все пиццерии',
     email: 'ivanov@pix-dodo.ru',
     phone: '+7 900 000-00-01',
-    parentId: null,
+    parentIds: [],
     relatedIds: [],
     extraFields: [],
   },
@@ -23,7 +23,7 @@ const SEED_DATA: Employee[] = [
     pizzeria: 'Все пиццерии',
     email: 'petrov@pix-dodo.ru',
     phone: '+7 900 000-00-02',
-    parentId: '1',
+    parentIds: ['1'],
     relatedIds: [],
     extraFields: [],
   },
@@ -35,7 +35,7 @@ const SEED_DATA: Employee[] = [
     pizzeria: 'ул. Ленина',
     email: 'sidorov@pix-dodo.ru',
     phone: '+7 900 000-00-03',
-    parentId: '2',
+    parentIds: ['2'],
     relatedIds: [],
     extraFields: [],
   },
@@ -47,7 +47,7 @@ const SEED_DATA: Employee[] = [
     pizzeria: 'ул. Мира',
     email: 'kozlov@pix-dodo.ru',
     phone: '+7 900 000-00-04',
-    parentId: '2',
+    parentIds: ['2'],
     relatedIds: [],
     extraFields: [],
   },
@@ -85,7 +85,7 @@ export function deleteEmployee(id: string): void {
     .filter(e => e.id !== id)
     .map(e => ({
       ...e,
-      parentId: e.parentId === id ? null : e.parentId,
+      parentIds: e.parentIds.filter(pid => pid !== id),
       relatedIds: e.relatedIds.filter(rid => rid !== id),
     }));
   saveEmployees(employees);

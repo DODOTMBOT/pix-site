@@ -11,8 +11,8 @@ function renderModal(emp: Employee, allEmployees: Employee[], onClose: () => voi
     z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px;
   `;
 
-  const subordinates = allEmployees.filter(e => e.parentId === emp.id);
-  const manager = emp.parentId ? getEmployee(emp.parentId) : null;
+  const subordinates = allEmployees.filter(e => e.parentIds.includes(emp.id));
+  const managers = emp.parentIds.map(pid => getEmployee(pid)).filter((m): m is NonNullable<typeof m> => !!m);
 
   const avatarContent = emp.avatar && emp.avatar.startsWith('data:')
     ? `<img src="${emp.avatar}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;margin:0 auto 16px;display:block;">`
@@ -44,7 +44,7 @@ function renderModal(emp: Employee, allEmployees: Employee[], onClose: () => voi
           ['Пиццерия', emp.pizzeria],
           ['Email', emp.email],
           ['Телефон', emp.phone],
-          ['Руководитель', manager ? manager.name : '—'],
+          ['Руководитель', managers.length ? managers.map(m => m.name).join(', ') : '—'],
         ].filter(([, v]) => v).map(([l, v]) => `
           <div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid #f3f4f6;">
             <span style="font-size:13px;color:#6b7280;min-width:120px;">${l}</span>

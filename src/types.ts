@@ -18,7 +18,7 @@ export interface Employee {
   pizzeria: string;
   email: string;
   phone: string;
-  parentId: string | null;
+  parentIds: string[];
   relatedIds: string[];
   extraFields: { label: string; value: string }[];
   avatar?: string;
