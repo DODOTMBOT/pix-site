@@ -71,13 +71,10 @@ function buildDeptBlock(
     const leaderEl = document.createElement('div');
     leaderEl.className = 'dept-leader';
     leaderEl.innerHTML = `
-      ${avatarHtml(leader, 36)}
-      <div>
-        <div style="font-size:14px;font-weight:600;color:#111;line-height:1.3;">${leader.name}</div>
-        <div style="font-size:12px;color:#6b7280;">${leader.position}</div>
-      </div>
+      ${avatarHtml(leader, 28)}
+      <span class="dept-leader-name">${leader.name}</span>
+      <span class="dept-leader-pos">· ${leader.position}</span>
     `;
-    leaderEl.style.cursor = 'pointer';
     leaderEl.addEventListener('click', () => onClick(leader));
     header.appendChild(leaderEl);
   }
