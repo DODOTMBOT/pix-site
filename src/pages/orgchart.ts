@@ -77,6 +77,8 @@ export function renderOrgChart(): HTMLElement {
 
   const employees    = getEmployees();
   const departments  = getDepartments();
+  console.log('departments:', departments);
+  console.log('employees:', employees);
 
   let treeContent: HTMLElement;
   if (departments.length === 0) {
@@ -104,7 +106,10 @@ export function renderOrgChart(): HTMLElement {
             <div style="font-size:11px;font-weight:600;letter-spacing:0.12em;color:#6b7280;text-transform:uppercase;margin-bottom:8px;">Организация</div>
             <h1 style="font-size:28px;font-weight:700;letter-spacing:-0.02em;">Структура компании</h1>
           </div>
-          <button class="btn btn-outline" id="goto-admin-btn" style="font-size:13px;padding:8px 16px;">Управление</button>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-outline" id="reset-btn" style="font-size:13px;padding:8px 16px;color:#ef4444;border-color:#fecaca;">Сброс данных</button>
+            <button class="btn btn-outline" id="goto-admin-btn" style="font-size:13px;padding:8px 16px;">Управление</button>
+          </div>
         </div>
         <div id="tree-wrap"></div>
       </section>
@@ -112,6 +117,13 @@ export function renderOrgChart(): HTMLElement {
   `;
 
   page.querySelector('#goto-admin-btn')!.addEventListener('click', () => navigate('/admin'));
+  page.querySelector('#reset-btn')!.addEventListener('click', () => {
+    if (confirm('Сбросить все данные и загрузить тестовые? Это удалит всех сотрудников и отделы.')) {
+      localStorage.removeItem('pix_employees');
+      localStorage.removeItem('pix_departments');
+      window.location.reload();
+    }
+  });
   page.querySelector('#tree-wrap')!.appendChild(treeContent);
 
   return page;
