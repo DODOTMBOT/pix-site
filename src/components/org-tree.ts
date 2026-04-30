@@ -11,7 +11,7 @@ function avatarHtml(emp: Employee, size: number): string {
 
 function buildEmpNode(
   emp: Employee,
-  allEmployees: Employee[],
+  deptEmployees: Employee[],
   onClick: (emp: Employee) => void,
   visited: Set<string>
 ): HTMLElement {
@@ -19,9 +19,10 @@ function buildEmpNode(
   card.className = 'emp-card';
   card.innerHTML = `
     ${avatarHtml(emp, 32)}
-    <div>
-      <div style="font-size:13px;font-weight:600;color:#111;line-height:1.3;">${emp.name}</div>
-      <div style="font-size:12px;color:#6b7280;">${emp.position}</div>
+    <div class="emp-info">
+      <div class="emp-name">${emp.name}</div>
+      <div class="emp-position">${emp.position}</div>
+      ${emp.pizzeria ? `<div class="emp-pizzeria">${emp.pizzeria}</div>` : ''}
     </div>
   `;
   card.addEventListener('click', () => onClick(emp));
@@ -30,7 +31,8 @@ function buildEmpNode(
   const nextVisited = new Set(visited);
   nextVisited.add(emp.id);
 
-  const subordinates = allEmployees.filter(e => e.managerId === emp.id);
+  // Subordinates only within this department
+  const subordinates = deptEmployees.filter(e => e.managerId === emp.id);
   if (subordinates.length === 0) return card;
 
   const wrap = document.createElement('div');
@@ -39,7 +41,7 @@ function buildEmpNode(
 
   const subsBlock = document.createElement('div');
   subsBlock.className = 'emp-subs-block';
-  subordinates.forEach(sub => subsBlock.appendChild(buildEmpNode(sub, allEmployees, onClick, nextVisited)));
+  subordinates.forEach(sub => subsBlock.appendChild(buildEmpNode(sub, deptEmployees, onClick, nextVisited)));
   wrap.appendChild(subsBlock);
 
   return wrap;
@@ -55,46 +57,45 @@ function buildDeptBlock(
   const block = document.createElement('div');
   block.className = 'dept-block';
 
-  // ── Header: dept leader + dept name ─────────────────────────
+  // ── Header: dept title + leader ──────────────────────────────
   const header = document.createElement('div');
   header.className = 'dept-header';
 
+  const titleEl = document.createElement('div');
+  titleEl.className = 'dept-title';
+  titleEl.textContent = dept.name;
+  header.appendChild(titleEl);
+
   const leader = dept.leaderId ? allEmployees.find(e => e.id === dept.leaderId) : null;
   if (leader) {
-    const leaderCard = document.createElement('div');
-    leaderCard.className = 'dept-leader-card';
-    leaderCard.innerHTML = `
+    const leaderEl = document.createElement('div');
+    leaderEl.className = 'dept-leader';
+    leaderEl.innerHTML = `
       ${avatarHtml(leader, 36)}
       <div>
-        <div style="font-size:13px;font-weight:600;color:#111;line-height:1.3;">${leader.name}</div>
+        <div style="font-size:14px;font-weight:600;color:#111;line-height:1.3;">${leader.name}</div>
         <div style="font-size:12px;color:#6b7280;">${leader.position}</div>
       </div>
     `;
-    leaderCard.addEventListener('click', () => onClick(leader));
-    header.appendChild(leaderCard);
+    leaderEl.style.cursor = 'pointer';
+    leaderEl.addEventListener('click', () => onClick(leader));
+    header.appendChild(leaderEl);
   }
-
-  const nameEl = document.createElement('div');
-  nameEl.className = 'dept-name';
-  nameEl.textContent = dept.name;
-  header.appendChild(nameEl);
 
   block.appendChild(header);
 
   // ── Members rendered recursively ─────────────────────────────
-  // Root members of this dept: in this dept AND (no managerId, OR manager is outside this dept)
-  const deptEmps = allEmployees.filter(e => e.departmentId === dept.id && e.id !== dept.leaderId);
-  const rootMembers = deptEmps.filter(e => {
-    if (!e.managerId) return true;
-    const mgr = allEmployees.find(m => m.id === e.managerId);
-    return !mgr || mgr.departmentId !== dept.id;
-  });
+  const deptEmps   = allEmployees.filter(e => e.departmentId === dept.id && e.id !== dept.leaderId);
+  const deptEmpIds = new Set(deptEmps.map(e => e.id));
+
+  // Root members: no managerId, or manager is outside this dept
+  const rootMembers = deptEmps.filter(e => !e.managerId || !deptEmpIds.has(e.managerId));
 
   if (rootMembers.length > 0) {
     const membersWrap = document.createElement('div');
     membersWrap.className = 'dept-members';
     rootMembers.forEach(emp => {
-      membersWrap.appendChild(buildEmpNode(emp, allEmployees, onClick, new Set([dept.leaderId ?? ''])));
+      membersWrap.appendChild(buildEmpNode(emp, deptEmps, onClick, new Set()));
     });
     block.appendChild(membersWrap);
   }
