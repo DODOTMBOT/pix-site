@@ -6,8 +6,12 @@ const DEPT_KEY = 'pix_departments';
 // ─── Seed data ───────────────────────────────────────────────────────────────
 
 const DEPT_SEED: Department[] = [
-  { id: 'd1', name: 'Управление',  leaderId: 'e1', parentDepartmentId: null },
-  { id: 'd2', name: 'Бухгалтерия', leaderId: 'e3', parentDepartmentId: 'd1' },
+  { id: 'd1', name: 'Управление',                 leaderId: 'e1', parentDepartmentId: null, priority: 1 },
+  { id: 'd2', name: 'Бухгалтерия',               leaderId: 'e3', parentDepartmentId: 'd1', priority: 2 },
+  { id: 'd3', name: 'Территория 1',              leaderId: null, parentDepartmentId: null, priority: 2 },
+  { id: 'd4', name: 'Территория 2',              leaderId: null, parentDepartmentId: null, priority: 2 },
+  { id: 'd5', name: 'Территория 1 — Управляющие', leaderId: null, parentDepartmentId: 'd3', priority: 3 },
+  { id: 'd6', name: 'Территория 2 — Управляющие', leaderId: null, parentDepartmentId: 'd4', priority: 3 },
 ];
 
 const EMP_SEED: Employee[] = [
@@ -20,9 +24,14 @@ const EMP_SEED: Employee[] = [
 
 // ─── Department CRUD ──────────────────────────────────────────────────────────
 
+function migrateDepartment(raw: Record<string, unknown>): Department {
+  if (typeof raw['priority'] !== 'number') raw['priority'] = 1;
+  return raw as unknown as Department;
+}
+
 export function getDepartments(): Department[] {
   const raw = localStorage.getItem(DEPT_KEY);
-  if (raw) return JSON.parse(raw) as Department[];
+  if (raw) return (JSON.parse(raw) as Record<string, unknown>[]).map(migrateDepartment);
   saveDepartments(DEPT_SEED);
   return DEPT_SEED;
 }

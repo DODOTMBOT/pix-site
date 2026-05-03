@@ -58,11 +58,17 @@ export function renderAdminDepartment(deptId?: string): HTMLElement {
                 </select>
               </div>
 
-              <div style="margin-bottom:24px;">
-                ${labelHtml('Родительский отдел')}
-                <select id="f-parent" style="${inputStyle()}">
-                  ${parentOptions}
-                </select>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+                <div>
+                  ${labelHtml('Родительский отдел')}
+                  <select id="f-parent" style="${inputStyle()}">
+                    ${parentOptions}
+                  </select>
+                </div>
+                <div>
+                  ${labelHtml('Приоритет')}
+                  <input id="f-priority" type="number" min="1" value="${existing?.priority ?? 1}" style="${inputStyle()}">
+                </div>
               </div>
 
               <div style="display:flex;gap:12px;">
@@ -79,7 +85,7 @@ export function renderAdminDepartment(deptId?: string): HTMLElement {
       el.addEventListener('focus', () => { el.style.borderColor = 'var(--accent)'; });
       el.addEventListener('blur',  () => { el.style.borderColor = '#e5e7eb'; });
     });
-    wrap.querySelectorAll<HTMLInputElement>('input[type=text]').forEach(el => {
+    wrap.querySelectorAll<HTMLInputElement>('input[type=text],input[type=number]').forEach(el => {
       el.addEventListener('focus', () => { el.style.borderColor = 'var(--accent)'; });
       el.addEventListener('blur',  () => { el.style.borderColor = '#e5e7eb'; });
     });
@@ -103,10 +109,11 @@ export function renderAdminDepartment(deptId?: string): HTMLElement {
       errEl.style.display = 'none';
       nameInput.style.borderColor = '#e5e7eb';
 
-      const leaderId          = (wrap.querySelector<HTMLSelectElement>('#f-leader')!).value || null;
+      const leaderId           = (wrap.querySelector<HTMLSelectElement>('#f-leader')!).value || null;
       const parentDepartmentId = (wrap.querySelector<HTMLSelectElement>('#f-parent')!).value  || null;
+      const priority           = Math.max(1, Number((wrap.querySelector<HTMLInputElement>('#f-priority')!).value) || 1);
 
-      const data: Omit<Department, 'id'> = { name, leaderId, parentDepartmentId };
+      const data: Omit<Department, 'id'> = { name, leaderId, parentDepartmentId, priority };
 
       if (isNew) {
         addDepartment(data);

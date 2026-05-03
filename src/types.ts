@@ -15,6 +15,7 @@ export interface Department {
   name: string;
   leaderId: string | null;
   parentDepartmentId: string | null;
+  priority: number;
   color?: string;
 }
 
