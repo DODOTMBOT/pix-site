@@ -133,7 +133,9 @@ export function renderAdmin(): HTMLElement {
     const rowsHtml = departments.length === 0
       ? `<tr><td colspan="4" style="text-align:center;padding:40px;color:#9ca3af;font-size:14px;">Отделов нет</td></tr>`
       : departments.map(dept => {
-          const leaderName  = dept.leaderId ? (employees.find(e => e.id === dept.leaderId)?.name ?? '—') : '—';
+          const leaderName  = dept.leaderIds.length > 0
+            ? dept.leaderIds.map(lid => employees.find(e => e.id === lid)?.name ?? '—').join(', ')
+            : '—';
           const parentName  = dept.parentDepartmentId ? (getDepartment(dept.parentDepartmentId)?.name ?? '—') : 'Корневой';
           return `
             <tr>

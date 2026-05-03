@@ -60,8 +60,8 @@ function buildDeptBlock(
   titleEl.textContent = dept.name;
   block.appendChild(titleEl);
 
-  // Leader
-  const leader = dept.leaderId ? allEmployees.find(e => e.id === dept.leaderId) : null;
+  // Leader (use first leaderId for backwards-compat display)
+  const leader = dept.leaderIds.length > 0 ? allEmployees.find(e => e.id === dept.leaderIds[0]) : null;
   if (leader) {
     const leaderEl = document.createElement('div');
     leaderEl.className = 'dept-leader';
@@ -77,7 +77,8 @@ function buildDeptBlock(
   }
 
   // Members
-  const deptEmps   = allEmployees.filter(e => e.departmentId === dept.id && e.id !== dept.leaderId);
+  const leaderIdSet = new Set(dept.leaderIds);
+  const deptEmps   = allEmployees.filter(e => e.departmentId === dept.id && !leaderIdSet.has(e.id));
   const deptEmpIds = new Set(deptEmps.map(e => e.id));
   const rootMembers = deptEmps.filter(e => !e.managerId || !deptEmpIds.has(e.managerId));
 

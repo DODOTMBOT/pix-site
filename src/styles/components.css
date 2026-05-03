@@ -271,6 +271,28 @@
 
 .dept-leader-row:hover { opacity: 0.75; }
 
+.dept-leaders-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.dept-leader-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 6px 10px;
+  transition: border-color 0.15s;
+}
+
+.dept-leader-item:hover { border-color: #f97316; }
+
 .dept-members {
   display: flex;
   flex-wrap: wrap;

@@ -108,8 +108,9 @@ function buildDeptBlock(
   const block = document.createElement('div');
   block.className = nested ? 'dept-block nested' : 'dept-block';
 
-  const leader   = dept.leaderId ? allEmps.find(e => e.id === dept.leaderId) : null;
-  const members  = allEmps.filter(e => e.departmentId === dept.id && e.id !== dept.leaderId);
+  const leaders  = dept.leaderIds.map(lid => allEmps.find(e => e.id === lid)).filter(Boolean) as Employee[];
+  const leaderIdSet = new Set(dept.leaderIds);
+  const members  = allEmps.filter(e => e.departmentId === dept.id && !leaderIdSet.has(e.id));
   const children = allDepts.filter(d => d.parentDepartmentId === dept.id);
 
   const titleEl = document.createElement('div');
@@ -117,7 +118,8 @@ function buildDeptBlock(
   titleEl.textContent = dept.name.toUpperCase();
   block.appendChild(titleEl);
 
-  if (leader) {
+  if (leaders.length === 1) {
+    const leader = leaders[0];
     const leaderRow = document.createElement('div');
     leaderRow.className = 'dept-leader-row';
     leaderRow.style.cursor = 'pointer';
@@ -130,6 +132,24 @@ function buildDeptBlock(
     `;
     leaderRow.addEventListener('click', () => onClick(leader));
     block.appendChild(leaderRow);
+  } else if (leaders.length > 1) {
+    const leadersRow = document.createElement('div');
+    leadersRow.className = 'dept-leaders-row';
+    leaders.forEach(leader => {
+      const item = document.createElement('div');
+      item.className = 'dept-leader-item';
+      item.style.cursor = 'pointer';
+      item.innerHTML = `
+        ${avatarHtml(leader, 'sm')}
+        <div>
+          <div class="emp-name">${leader.name}</div>
+          <div class="emp-position">${leader.position}</div>
+        </div>
+      `;
+      item.addEventListener('click', () => onClick(leader));
+      leadersRow.appendChild(item);
+    });
+    block.appendChild(leadersRow);
   }
 
   if (members.length > 0) {

@@ -6,12 +6,12 @@ const DEPT_KEY = 'pix_departments';
 // ─── Seed data ───────────────────────────────────────────────────────────────
 
 const DEPT_SEED: Department[] = [
-  { id: 'd1', name: 'Управление',                 leaderId: 'e1', parentDepartmentId: null, priority: 1 },
-  { id: 'd2', name: 'Бухгалтерия',               leaderId: 'e3', parentDepartmentId: 'd1', priority: 2 },
-  { id: 'd3', name: 'Территория 1',              leaderId: null, parentDepartmentId: null, priority: 2 },
-  { id: 'd4', name: 'Территория 2',              leaderId: null, parentDepartmentId: null, priority: 2 },
-  { id: 'd5', name: 'Территория 1 — Управляющие', leaderId: null, parentDepartmentId: 'd3', priority: 3 },
-  { id: 'd6', name: 'Территория 2 — Управляющие', leaderId: null, parentDepartmentId: 'd4', priority: 3 },
+  { id: 'd1', name: 'Управление',                  leaderIds: ['e1'], parentDepartmentId: null, priority: 1 },
+  { id: 'd2', name: 'Бухгалтерия',                leaderIds: ['e3'], parentDepartmentId: 'd1', priority: 2 },
+  { id: 'd3', name: 'Территория 1',               leaderIds: [],     parentDepartmentId: null, priority: 2 },
+  { id: 'd4', name: 'Территория 2',               leaderIds: [],     parentDepartmentId: null, priority: 2 },
+  { id: 'd5', name: 'Территория 1 — Управляющие', leaderIds: [],     parentDepartmentId: 'd3', priority: 3 },
+  { id: 'd6', name: 'Территория 2 — Управляющие', leaderIds: [],     parentDepartmentId: 'd4', priority: 3 },
 ];
 
 const EMP_SEED: Employee[] = [
@@ -26,6 +26,10 @@ const EMP_SEED: Employee[] = [
 
 function migrateDepartment(raw: Record<string, unknown>): Department {
   if (typeof raw['priority'] !== 'number') raw['priority'] = 1;
+  if (!Array.isArray(raw['leaderIds'])) {
+    raw['leaderIds'] = raw['leaderId'] ? [raw['leaderId']] : [];
+  }
+  delete raw['leaderId'];
   return raw as unknown as Department;
 }
 
@@ -111,6 +115,6 @@ export function deleteEmployee(id: string): void {
       .map(e => ({ ...e, relatedIds: e.relatedIds.filter(rid => rid !== id) }))
   );
   saveDepartments(
-    getDepartments().map(d => d.leaderId === id ? { ...d, leaderId: null } : d)
+    getDepartments().map(d => ({ ...d, leaderIds: d.leaderIds.filter(lid => lid !== id) }))
   );
 }

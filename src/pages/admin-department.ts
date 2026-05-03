@@ -20,12 +20,16 @@ export function renderAdminDepartment(deptId?: string): HTMLElement {
   function buildForm(): HTMLElement {
     const wrap = document.createElement('div');
 
-    const employees   = getEmployees();
-    const allDepts    = getDepartments().filter(d => d.id !== deptId);
+    const employees  = getEmployees();
+    const allDepts   = getDepartments().filter(d => d.id !== deptId);
+    const currentLeaderIds = existing?.leaderIds ?? [];
 
-    const leaderOptions = employees.map(e =>
-      `<option value="${e.id}" ${existing?.leaderId === e.id ? 'selected' : ''}>${e.name} — ${e.position}</option>`
-    ).join('');
+    const leaderCheckboxes = employees.map(e => `
+      <label style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid #e5e7eb;border-radius:8px;cursor:pointer;font-size:13px;color:#374151;background:#fff;">
+        <input type="checkbox" class="leader-check" value="${e.id}" ${currentLeaderIds.includes(e.id) ? 'checked' : ''} style="accent-color:var(--accent);width:15px;height:15px;flex-shrink:0;">
+        ${e.name} — ${e.position}
+      </label>
+    `).join('');
 
     const parentOptions = [
       `<option value="" ${!existing?.parentDepartmentId ? 'selected' : ''}>Нет (корневой)</option>`,
@@ -51,11 +55,10 @@ export function renderAdminDepartment(deptId?: string): HTMLElement {
               </div>
 
               <div style="margin-bottom:16px;">
-                ${labelHtml('Руководитель')}
-                <select id="f-leader" style="${inputStyle()}">
-                  <option value="">— Не назначен —</option>
-                  ${leaderOptions}
-                </select>
+                ${labelHtml('Руководители')}
+                <div id="leaders-list" style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;padding:2px;">
+                  ${leaderCheckboxes}
+                </div>
               </div>
 
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
@@ -96,8 +99,8 @@ export function renderAdminDepartment(deptId?: string): HTMLElement {
     wrap.querySelector<HTMLFormElement>('#dept-form')!.addEventListener('submit', e => {
       e.preventDefault();
 
-      const name = (wrap.querySelector<HTMLInputElement>('#f-name')!).value.trim();
-      const errEl = wrap.querySelector<HTMLElement>('#err-name')!;
+      const name = wrap.querySelector<HTMLInputElement>('#f-name')!.value.trim();
+      const errEl    = wrap.querySelector<HTMLElement>('#err-name')!;
       const nameInput = wrap.querySelector<HTMLInputElement>('#f-name')!;
 
       if (!name) {
@@ -109,11 +112,12 @@ export function renderAdminDepartment(deptId?: string): HTMLElement {
       errEl.style.display = 'none';
       nameInput.style.borderColor = '#e5e7eb';
 
-      const leaderId           = (wrap.querySelector<HTMLSelectElement>('#f-leader')!).value || null;
-      const parentDepartmentId = (wrap.querySelector<HTMLSelectElement>('#f-parent')!).value  || null;
-      const priority           = Math.max(1, Number((wrap.querySelector<HTMLInputElement>('#f-priority')!).value) || 1);
+      const leaderIds = Array.from(wrap.querySelectorAll<HTMLInputElement>('.leader-check:checked'))
+        .map(cb => cb.value);
+      const parentDepartmentId = wrap.querySelector<HTMLSelectElement>('#f-parent')!.value || null;
+      const priority           = Math.max(1, Number(wrap.querySelector<HTMLInputElement>('#f-priority')!.value) || 1);
 
-      const data: Omit<Department, 'id'> = { name, leaderId, parentDepartmentId, priority };
+      const data: Omit<Department, 'id'> = { name, leaderIds, parentDepartmentId, priority };
 
       if (isNew) {
         addDepartment(data);

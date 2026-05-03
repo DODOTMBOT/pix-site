@@ -13,7 +13,7 @@ export interface NavItem {
 export interface Department {
   id: string;
   name: string;
-  leaderId: string | null;
+  leaderIds: string[];
   parentDepartmentId: string | null;
   priority: number;
   color?: string;
