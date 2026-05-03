@@ -186,20 +186,11 @@ function buildOrgTree(
   priorities.forEach(priority => {
     const depts = rootDepts.filter(d => d.priority === priority);
 
-    const levelEl = document.createElement('div');
-    levelEl.className = 'priority-level';
-
-    const labelEl = document.createElement('div');
-    labelEl.className = 'priority-label';
-    labelEl.textContent = `Уровень ${priority}`;
-    levelEl.appendChild(labelEl);
-
     const rowEl = document.createElement('div');
     rowEl.className = 'priority-row';
     depts.forEach(dept => rowEl.appendChild(buildDeptBlock(dept, departments, employees, onClick, false)));
-    levelEl.appendChild(rowEl);
 
-    page.appendChild(levelEl);
+    page.appendChild(rowEl);
   });
 
   return page;
