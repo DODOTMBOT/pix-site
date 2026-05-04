@@ -4,6 +4,7 @@ const NAV_LINKS = [
   { label: 'Регламенты', path: '/regulations' },
   { label: 'Инструкции', path: '/instructions' },
   { label: 'Структура',  path: '/org' },
+  { label: 'Доступы',    path: '/access' },
   { label: 'Контакты',   path: '/contacts' },
 ];
 

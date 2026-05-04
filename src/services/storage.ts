@@ -1,7 +1,8 @@
-import type { Employee, Department } from '../types';
+import type { Employee, Department, AccessEntry } from '../types';
 
-const EMP_KEY  = 'pix_employees';
-const DEPT_KEY = 'pix_departments';
+const EMP_KEY    = 'pix_employees';
+const DEPT_KEY   = 'pix_departments';
+const ACCESS_KEY = 'pix_access';
 
 // ─── Seed data ───────────────────────────────────────────────────────────────
 
@@ -117,4 +118,29 @@ export function deleteEmployee(id: string): void {
   saveDepartments(
     getDepartments().map(d => ({ ...d, leaderIds: d.leaderIds.filter(lid => lid !== id) }))
   );
+}
+
+// ─── Access CRUD ──────────────────────────────────────────────────────────────
+
+export function getAccessEntries(): AccessEntry[] {
+  const raw = localStorage.getItem(ACCESS_KEY);
+  return raw ? JSON.parse(raw) as AccessEntry[] : [];
+}
+
+function saveAccessEntries(entries: AccessEntry[]): void {
+  localStorage.setItem(ACCESS_KEY, JSON.stringify(entries));
+}
+
+export function addAccessEntry(entry: Omit<AccessEntry, 'id' | 'createdAt'>): AccessEntry {
+  const created: AccessEntry = { ...entry, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
+  saveAccessEntries([...getAccessEntries(), created]);
+  return created;
+}
+
+export function updateAccessEntry(id: string, data: Partial<AccessEntry>): void {
+  saveAccessEntries(getAccessEntries().map(e => e.id === id ? { ...e, ...data } : e));
+}
+
+export function deleteAccessEntry(id: string): void {
+  saveAccessEntries(getAccessEntries().filter(e => e.id !== id));
 }

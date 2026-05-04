@@ -1,7 +1,7 @@
 import { navigate } from '../router';
-import { getEmployees, deleteEmployee, getEmployee, getDepartments, getDepartment, deleteDepartment } from '../services/storage';
+import { getEmployees, deleteEmployee, getEmployee, getDepartments, getDepartment, deleteDepartment, getAccessEntries, deleteAccessEntry } from '../services/storage';
 
-type Tab = 'employees' | 'departments';
+type Tab = 'employees' | 'departments' | 'access';
 
 export function renderAdmin(): HTMLElement {
   const page = document.createElement('div');
@@ -35,6 +35,7 @@ export function renderAdmin(): HTMLElement {
           <div style="display:flex;gap:0;border-bottom:1px solid #e5e7eb;margin-bottom:24px;">
             ${tabBtn('employees', 'Сотрудники')}
             ${tabBtn('departments', 'Отделы')}
+            ${tabBtn('access', 'Доступы')}
           </div>
           <div id="tab-content"></div>
         </section>
@@ -44,7 +45,9 @@ export function renderAdmin(): HTMLElement {
     wrap.querySelector('#back-site')!.addEventListener('click', () => navigate('/'));
 
     wrap.querySelector('#add-btn')!.addEventListener('click', () => {
-      navigate(activeTab === 'employees' ? '/admin/employee/new' : '/admin/department/new');
+      if (activeTab === 'employees')   navigate('/admin/employee/new');
+      else if (activeTab === 'departments') navigate('/admin/department/new');
+      else navigate('/admin/access/new');
     });
 
     wrap.querySelectorAll<HTMLButtonElement>('.tab-btn').forEach(btn => {
@@ -57,8 +60,10 @@ export function renderAdmin(): HTMLElement {
     const tabContent = wrap.querySelector('#tab-content')!;
     if (activeTab === 'employees') {
       tabContent.appendChild(buildEmployeesTable());
-    } else {
+    } else if (activeTab === 'departments') {
       tabContent.appendChild(buildDepartmentsTable());
+    } else {
+      tabContent.appendChild(buildAccessTable());
     }
 
     return wrap;
@@ -181,6 +186,65 @@ export function renderAdmin(): HTMLElement {
         if (!dept) return;
         if (confirm(`Удалить отдел "${dept.name}"? Сотрудники отдела станут без отдела.`)) {
           deleteDepartment(btn.dataset['id']!);
+          rebuild();
+        }
+      });
+    });
+
+    return el;
+  }
+
+  function buildAccessTable(): HTMLElement {
+    const entries = getAccessEntries();
+    const el = document.createElement('div');
+
+    const rowsHtml = entries.length === 0
+      ? `<tr><td colspan="5" style="text-align:center;padding:40px;color:#9ca3af;font-size:14px;">Доступов нет</td></tr>`
+      : entries.map(entry => `
+          <tr>
+            <td style="padding:13px 16px;font-weight:500;">
+              ${entry.serviceName}
+              ${entry.serviceUrl ? `<a href="${entry.serviceUrl}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);text-decoration:none;margin-left:6px;">↗</a>` : ''}
+            </td>
+            <td style="padding:13px 16px;color:#f97316;font-size:13px;">${entry.pizzeria || '—'}</td>
+            <td style="padding:13px 16px;color:#6b7280;font-size:13px;font-family:monospace;">${entry.login}</td>
+            <td style="padding:13px 16px;color:#9ca3af;font-size:13px;letter-spacing:0.1em;">••••••••</td>
+            <td style="padding:13px 16px;">
+              <div style="display:flex;gap:8px;">
+                <button class="acc-edit" data-id="${entry.id}" style="font-size:12px;padding:5px 12px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;cursor:pointer;color:#374151;">Изменить</button>
+                <button class="acc-delete" data-id="${entry.id}" data-name="${entry.serviceName}" style="font-size:12px;padding:5px 12px;border:1px solid #fecaca;border-radius:6px;background:#fff;cursor:pointer;color:#ef4444;">Удалить</button>
+              </div>
+            </td>
+          </tr>
+        `).join('');
+
+    el.innerHTML = `
+      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:1px solid #e5e7eb;background:#f9fafb;">
+              ${['Сервис','Пиццерия','Логин','Пароль','Действия'].map(h =>
+                `<th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;letter-spacing:0.08em;color:#6b7280;text-transform:uppercase;">${h}</th>`
+              ).join('')}
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    `;
+
+    el.querySelectorAll<HTMLButtonElement>('.acc-edit').forEach(btn => {
+      btn.addEventListener('mouseenter', () => { btn.style.background = '#f9fafb'; });
+      btn.addEventListener('mouseleave', () => { btn.style.background = '#fff'; });
+      btn.addEventListener('click', () => navigate(`/admin/access/${btn.dataset['id']}`));
+    });
+
+    el.querySelectorAll<HTMLButtonElement>('.acc-delete').forEach(btn => {
+      btn.addEventListener('mouseenter', () => { btn.style.background = '#fef2f2'; });
+      btn.addEventListener('mouseleave', () => { btn.style.background = '#fff'; });
+      btn.addEventListener('click', () => {
+        if (confirm(`Удалить доступ "${btn.dataset['name']}"?`)) {
+          deleteAccessEntry(btn.dataset['id']!);
           rebuild();
         }
       });

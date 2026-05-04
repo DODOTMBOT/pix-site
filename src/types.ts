@@ -19,6 +19,17 @@ export interface Department {
   color?: string;
 }
 
+export interface AccessEntry {
+  id: string;
+  serviceName: string;
+  serviceUrl: string;
+  login: string;
+  password: string;
+  pizzeria: string;
+  notes: string;
+  createdAt: string;
+}
+
 export interface Employee {
   id: string;
   name: string;

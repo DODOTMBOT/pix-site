@@ -7,6 +7,7 @@ import { renderOrgChart } from './pages/orgchart';
 import { renderAdmin } from './pages/admin';
 import { renderAdminEmployee } from './pages/admin-employee';
 import { renderAdminDepartment } from './pages/admin-department';
+import { renderAdminAccess } from './pages/admin-access';
 
 function matchRoute(path: string): () => HTMLElement {
   if (path === '/')             return renderHome;
@@ -19,12 +20,16 @@ function matchRoute(path: string): () => HTMLElement {
 
   if (path === '/admin/employee/new')   return () => renderAdminEmployee();
   if (path === '/admin/department/new') return () => renderAdminDepartment();
+  if (path === '/admin/access/new')     return () => renderAdminAccess();
 
   const empMatch  = path.match(/^\/admin\/employee\/(.+)$/);
   if (empMatch)  return () => renderAdminEmployee(empMatch[1]);
 
   const deptMatch = path.match(/^\/admin\/department\/(.+)$/);
   if (deptMatch) return () => renderAdminDepartment(deptMatch[1]);
+
+  const accMatch  = path.match(/^\/admin\/access\/(.+)$/);
+  if (accMatch)  return () => renderAdminAccess(accMatch[1]);
 
   return renderHome;
 }
