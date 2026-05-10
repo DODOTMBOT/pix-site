@@ -156,15 +156,23 @@ export function renderAdminUsersForm(userId?: string): HTMLElement {
         if (!valid) { submitBtn.disabled = false; submitBtn.textContent = 'Сохранить'; return; }
 
         try {
+          console.log('Saving user:', { name, email, role, pizzerias });
+          let res: Response;
           if (isNew) {
-            await authFetch('/api/auth/register', {
+            res = await authFetch('/api/auth/register', {
               method: 'POST',
               body: JSON.stringify({ email, password, name, role, pizzerias }),
             });
           } else {
             const body: Record<string, unknown> = { name, role, pizzerias };
             if (password) body['password'] = password;
-            await authFetch(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify(body) });
+            res = await authFetch(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify(body) });
+          }
+          console.log('Response status:', res.status);
+          const data = await res.json();
+          console.log('Response data:', data);
+          if (!res.ok) {
+            throw new Error((data as { error?: string }).error || `Ошибка ${res.status}`);
           }
           navigate('/admin');
         } catch (err) {
