@@ -12,6 +12,7 @@ import { renderRates } from './pages/rates';
 import { renderAdminRates } from './pages/admin-rates';
 import { renderLogin } from './pages/login';
 import { renderAdminUsersForm } from './pages/admin-users';
+import { renderAdminHome } from './pages/admin-home';
 import { isAuthenticated, isManagement } from './services/auth';
 
 const PUBLIC_PATHS = new Set(['/login']);
@@ -39,6 +40,7 @@ function matchRoute(path: string): () => HTMLElement {
   if (path === '/admin/access/new')     return () => renderAdminAccess();
   if (path === '/admin/rates/new')      return () => renderAdminRates();
   if (path === '/admin/users/new')      return () => renderAdminUsersForm();
+  if (path === '/admin/home')           return renderAdminHome;
 
   const empMatch  = path.match(/^\/admin\/employee\/(.+)$/);
   if (empMatch)  return () => renderAdminEmployee(empMatch[1]);

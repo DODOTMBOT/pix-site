@@ -65,6 +65,23 @@ export interface AccessEntry {
   createdAt: string;
 }
 
+export interface HomeBlock {
+  id: string;
+  title: string;
+  description: string;
+  photo?: string;
+  link?: string;
+  size: 'large' | 'small';
+  bgColor?: string;
+}
+
+export interface HomeSettings {
+  headline: string;
+  subheadline: string;
+  photos: string[];
+  blocks: HomeBlock[];
+}
+
 export interface Employee {
   id: string;
   name: string;

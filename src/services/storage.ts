@@ -1,4 +1,31 @@
-import type { Employee, Department, AccessEntry, RateDocument } from '../types';
+import type { Employee, Department, AccessEntry, RateDocument, HomeSettings } from '../types';
+
+// ─── Home settings ────────────────────────────────────────────────────────────
+
+const HOME_KEY = 'pix_home_settings';
+
+const HOME_DEFAULTS: HomeSettings = {
+  headline: 'Всё что нужно\nдля работы в PiX',
+  subheadline: 'Регламенты, инструкции, ключи доступа и контакты команды — в одном месте, всегда под рукой.',
+  photos: [],
+  blocks: [
+    { id: '1', title: 'Оргструктура', description: 'Вся команда в одном месте', link: '/org', size: 'large', bgColor: '#1a1a1a' },
+    { id: '2', title: 'Ставки', description: 'Система оплаты труда', link: '/rates', size: 'small', bgColor: '#f97316' },
+    { id: '3', title: 'Доступы', description: 'Логины и пароли сервисов', link: '/access', size: 'small', bgColor: '#374151' },
+    { id: '4', title: 'Регламенты', description: 'Стандарты работы и процедуры', link: '/regulations', size: 'large', bgColor: '#166534' },
+  ],
+};
+
+export function getHomeSettings(): HomeSettings {
+  const raw = localStorage.getItem(HOME_KEY);
+  return raw ? (JSON.parse(raw) as HomeSettings) : HOME_DEFAULTS;
+}
+
+export function saveHomeSettings(settings: HomeSettings): void {
+  localStorage.setItem(HOME_KEY, JSON.stringify(settings));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 const EMP_KEY    = 'pix_employees';
 const DEPT_KEY   = 'pix_departments';

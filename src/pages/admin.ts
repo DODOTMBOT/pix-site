@@ -3,7 +3,7 @@ import { getEmployees, deleteEmployee, getEmployee, getDepartments, getDepartmen
 import { isManagement, isSuperAdmin } from '../services/auth';
 import { buildUsersTableEl } from './admin-users';
 
-type Tab = 'employees' | 'departments' | 'access' | 'rates' | 'users';
+type Tab = 'employees' | 'departments' | 'access' | 'rates' | 'users' | 'home';
 
 export function renderAdmin(): HTMLElement {
   const page = document.createElement('div');
@@ -28,7 +28,8 @@ export function renderAdmin(): HTMLElement {
       ">${label}</button>
     `;
 
-    const showAddBtn = activeTab !== 'users';
+    const noAddBtn = activeTab === 'users' || activeTab === 'home';
+    const showAddBtn = !noAddBtn;
 
     wrap.innerHTML = `
       <div class="container">
@@ -38,6 +39,7 @@ export function renderAdmin(): HTMLElement {
             <h1 style="font-size:28px;font-weight:700;letter-spacing:-0.02em;">Управление структурой</h1>
             ${showAddBtn ? '<button class="btn btn-primary" id="add-btn">+ Добавить</button>' : ''}
             ${activeTab === 'users' ? '<button class="btn btn-primary" id="add-user-btn">+ Новый пользователь</button>' : ''}
+            ${activeTab === 'home' ? '<button class="btn btn-primary" id="edit-home-btn">Редактировать</button>' : ''}
           </div>
           <div style="display:flex;gap:0;border-bottom:1px solid #e5e7eb;margin-bottom:24px;">
             ${tabBtn('employees', 'Сотрудники')}
@@ -45,6 +47,7 @@ export function renderAdmin(): HTMLElement {
             ${tabBtn('access', 'Доступы')}
             ${tabBtn('rates', 'Ставки')}
             ${isSuperAdmin() ? tabBtn('users', 'Пользователи') : ''}
+            ${tabBtn('home', 'Главная')}
           </div>
           <div id="tab-content"></div>
         </section>
@@ -61,6 +64,7 @@ export function renderAdmin(): HTMLElement {
     });
 
     wrap.querySelector('#add-user-btn')?.addEventListener('click', () => navigate('/admin/users/new'));
+    wrap.querySelector('#edit-home-btn')?.addEventListener('click', () => navigate('/admin/home'));
 
     wrap.querySelectorAll<HTMLButtonElement>('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -78,8 +82,18 @@ export function renderAdmin(): HTMLElement {
       tabContent.appendChild(buildAccessTable());
     } else if (activeTab === 'rates') {
       tabContent.appendChild(buildRatesTable());
-    } else {
+    } else if (activeTab === 'users') {
       tabContent.appendChild(buildUsersTableEl(rebuild));
+    } else {
+      tabContent.innerHTML = `
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:32px;text-align:center;">
+          <div style="font-size:32px;margin-bottom:12px;">🏠</div>
+          <div style="font-size:15px;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Главная страница</div>
+          <div style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;">Редактируйте заголовок, карусель фото и блоки главной страницы</div>
+          <button class="btn btn-primary" id="goto-home-edit">Редактировать главную</button>
+        </div>
+      `;
+      tabContent.querySelector('#goto-home-edit')?.addEventListener('click', () => navigate('/admin/home'));
     }
 
     return wrap;
