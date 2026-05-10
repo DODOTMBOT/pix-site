@@ -410,23 +410,6 @@ export function renderHome(): HTMLElement {
   const features = document.createElement('section');
   features.className = 'features-section';
   features.innerHTML = `
-    <div class="features-grid">
-      <div class="feature-item">
-        <div class="feature-icon">📋</div>
-        <h3>Регламенты</h3>
-        <p>Стандарты работы, правила, процедуры всегда под рукой</p>
-      </div>
-      <div class="feature-item">
-        <div class="feature-icon">🔑</div>
-        <h3>Ключи доступа</h3>
-        <p>Логины и пароли всех систем в одном защищённом месте</p>
-      </div>
-      <div class="feature-item">
-        <div class="feature-icon">👥</div>
-        <h3>Команда</h3>
-        <p>Оргструктура, контакты и роли всех сотрудников сети</p>
-      </div>
-    </div>
   `;
   page.appendChild(features);
 
