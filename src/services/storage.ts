@@ -7,7 +7,6 @@ const HOME_KEY = 'pix_home_settings';
 const HOME_DEFAULTS: HomeSettings = {
   headline: 'Всё что нужно\nдля работы в PiX',
   subheadline: 'Регламенты, инструкции, ключи доступа и контакты команды — в одном месте, всегда под рукой.',
-  photos: [],
   blocks: [
     { id: '1', title: 'Оргструктура', description: 'Вся команда в одном месте', link: '/org', size: 'large', bgColor: '#1a1a1a' },
     { id: '2', title: 'Ставки', description: 'Система оплаты труда', link: '/rates', size: 'small', bgColor: '#f97316' },

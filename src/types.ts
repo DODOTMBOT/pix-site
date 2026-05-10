@@ -78,7 +78,6 @@ export interface HomeBlock {
 export interface HomeSettings {
   headline: string;
   subheadline: string;
-  photos: string[];
   blocks: HomeBlock[];
 }
 

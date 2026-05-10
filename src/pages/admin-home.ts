@@ -23,37 +23,32 @@ export function renderAdminHome(): HTMLElement {
   const page = document.createElement('div');
   page.className = 'page-enter';
 
-  // Structural state (photos, block list order/existence, block photos)
-  // Text values are read from DOM at save time.
-  const loaded  = getHomeSettings();
-  let photos: string[]     = [...loaded.photos];
-  let blocks: HomeBlock[]  = loaded.blocks.map(b => ({ ...b }));
+  const loaded = getHomeSettings();
+  let blocks: HomeBlock[] = loaded.blocks.map(b => ({ ...b }));
 
   // ── Collect current values from DOM + state ──────────────────────────────
 
   function collectSettings(): HomeSettings {
-    const headline    = (page.querySelector<HTMLTextAreaElement>('#f-headline'))?.value ?? loaded.headline;
-    const subheadline = (page.querySelector<HTMLTextAreaElement>('#f-sub'))?.value ?? loaded.subheadline;
+    const headline    = page.querySelector<HTMLTextAreaElement>('#f-headline')?.value ?? loaded.headline;
+    const subheadline = page.querySelector<HTMLTextAreaElement>('#f-sub')?.value      ?? loaded.subheadline;
 
     const collectedBlocks: HomeBlock[] = [];
     page.querySelectorAll<HTMLElement>('.block-form-item').forEach(item => {
-      const id    = item.dataset['id'] ?? uid();
-      const photo = item.dataset['photo'] || undefined;
       collectedBlocks.push({
-        id,
-        photo,
-        title:       (item.querySelector<HTMLInputElement>('.block-title'))?.value   ?? '',
-        description: (item.querySelector<HTMLInputElement>('.block-desc'))?.value    ?? '',
-        link:        (item.querySelector<HTMLInputElement>('.block-link'))?.value    ?? '',
-        bgColor:     (item.querySelector<HTMLInputElement>('.block-color'))?.value   ?? '#111111',
-        size:        (item.querySelector<HTMLInputElement>('.block-size-wide'))?.checked ? 'large' : 'small',
+        id:          item.dataset['id'] ?? uid(),
+        photo:       item.dataset['photo'] || undefined,
+        title:       item.querySelector<HTMLInputElement>('.block-title')?.value  ?? '',
+        description: item.querySelector<HTMLInputElement>('.block-desc')?.value   ?? '',
+        link:        item.querySelector<HTMLInputElement>('.block-link')?.value   ?? '',
+        bgColor:     item.querySelector<HTMLInputElement>('.block-color')?.value  ?? '#111111',
+        size:        item.querySelector<HTMLInputElement>('.block-size-wide')?.checked ? 'large' : 'small',
       });
     });
 
-    return { headline, subheadline, photos, blocks: collectedBlocks };
+    return { headline, subheadline, blocks: collectedBlocks };
   }
 
-  // ── Build a block row (text inputs are NOT wired to state) ────────────────
+  // ── Build a block row ─────────────────────────────────────────────────────
 
   function buildBlockRow(block: HomeBlock, index: number, total: number): HTMLElement {
     const row = document.createElement('div');
@@ -120,7 +115,7 @@ export function renderAdminHome(): HTMLElement {
         </div>` : '<div class="photo-preview"></div>'}
     `;
 
-    // Photo upload — only structural change, updates data-photo and preview
+    // Photo upload for block card background
     row.querySelector<HTMLInputElement>(`#photo-file-${block.id}`)?.addEventListener('change', async e => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
@@ -150,15 +145,28 @@ export function renderAdminHome(): HTMLElement {
 
   let blocksList: HTMLElement;
 
+  function syncBlocksFromDom(): void {
+    page.querySelectorAll<HTMLElement>('.block-form-item').forEach((item, i) => {
+      if (i >= blocks.length) return;
+      blocks[i] = {
+        ...blocks[i],
+        photo:       item.dataset['photo'] || undefined,
+        title:       item.querySelector<HTMLInputElement>('.block-title')?.value  ?? blocks[i].title,
+        description: item.querySelector<HTMLInputElement>('.block-desc')?.value   ?? blocks[i].description,
+        link:        item.querySelector<HTMLInputElement>('.block-link')?.value   ?? blocks[i].link,
+        bgColor:     item.querySelector<HTMLInputElement>('.block-color')?.value  ?? blocks[i].bgColor,
+        size:        item.querySelector<HTMLInputElement>('.block-size-wide')?.checked ? 'large' : 'small',
+      };
+    });
+  }
+
   function renderBlocks(): void {
     blocksList.innerHTML = '';
     blocks.forEach((block, i) => {
       const row = buildBlockRow(block, i, blocks.length);
 
-      // Move / delete — structural, so re-render
       row.querySelector('[data-action="up"]')?.addEventListener('click', () => {
         if (i === 0) return;
-        // Capture current DOM values before re-render
         syncBlocksFromDom();
         [blocks[i], blocks[i - 1]] = [blocks[i - 1], blocks[i]];
         renderBlocks();
@@ -176,47 +184,6 @@ export function renderAdminHome(): HTMLElement {
       });
 
       blocksList.appendChild(row);
-    });
-  }
-
-  // Sync text-field values back into `blocks` array (called before structural re-renders)
-  function syncBlocksFromDom(): void {
-    page.querySelectorAll<HTMLElement>('.block-form-item').forEach((item, i) => {
-      if (i >= blocks.length) return;
-      blocks[i] = {
-        ...blocks[i],
-        photo:       item.dataset['photo'] || undefined,
-        title:       item.querySelector<HTMLInputElement>('.block-title')?.value  ?? blocks[i].title,
-        description: item.querySelector<HTMLInputElement>('.block-desc')?.value   ?? blocks[i].description,
-        link:        item.querySelector<HTMLInputElement>('.block-link')?.value   ?? blocks[i].link,
-        bgColor:     item.querySelector<HTMLInputElement>('.block-color')?.value  ?? blocks[i].bgColor,
-        size:        item.querySelector<HTMLInputElement>('.block-size-wide')?.checked ? 'large' : 'small',
-      };
-    });
-  }
-
-  // ── Photos grid ───────────────────────────────────────────────────────────
-
-  let photosGrid: HTMLElement;
-
-  function renderPhotos(): void {
-    photosGrid.innerHTML = '';
-    if (!photos.length) {
-      photosGrid.innerHTML = '<p style="font-size:13px;color:var(--text-muted);">Фотографий нет</p>';
-      return;
-    }
-    photos.forEach((src, i) => {
-      const item = document.createElement('div');
-      item.style.cssText = 'position:relative;display:inline-block;';
-      item.innerHTML = `
-        <img src="${src}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border);">
-        <button style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#ef4444;color:#fff;border:none;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;line-height:1;">✕</button>
-      `;
-      item.querySelector('button')!.addEventListener('click', () => {
-        photos.splice(i, 1);
-        renderPhotos();
-      });
-      photosGrid.appendChild(item);
     });
   }
 
@@ -242,20 +209,6 @@ export function renderAdminHome(): HTMLElement {
           </div>
         </div>
 
-        <!-- Фотографии -->
-        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:24px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-            <div>
-              <h2 style="font-size:15px;font-weight:600;color:var(--text-primary);">Фотографии карусели</h2>
-            </div>
-            <label style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--accent);color:#fff;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">
-              + Добавить фото
-              <input type="file" id="add-photos-input" accept="image/*" multiple style="display:none;">
-            </label>
-          </div>
-          <div id="photos-grid" style="display:flex;flex-wrap:wrap;gap:10px;"></div>
-        </div>
-
         <!-- Блоки -->
         <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:24px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
@@ -274,22 +227,10 @@ export function renderAdminHome(): HTMLElement {
     </div>
   `;
 
-  // Wire up references after innerHTML is set
   blocksList = wrap.querySelector('#blocks-list')!;
-  photosGrid = wrap.querySelector('#photos-grid')!;
-
-  renderPhotos();
   renderBlocks();
 
   wrap.querySelector('#back-btn')!.addEventListener('click', () => navigate('/admin'));
-
-  wrap.querySelector<HTMLInputElement>('#add-photos-input')!.addEventListener('change', async e => {
-    const files = Array.from((e.target as HTMLInputElement).files ?? []);
-    const b64s = await Promise.all(files.map(fileToBase64));
-    photos.push(...b64s);
-    (e.target as HTMLInputElement).value = '';
-    renderPhotos();
-  });
 
   wrap.querySelector('#add-block-btn')!.addEventListener('click', () => {
     syncBlocksFromDom();
@@ -301,9 +242,7 @@ export function renderAdminHome(): HTMLElement {
   const saveOk  = wrap.querySelector<HTMLElement>('#save-ok')!;
 
   saveBtn.addEventListener('click', () => {
-    const settings = collectSettings();
-    console.log('Save clicked', settings);
-    saveHomeSettings(settings);
+    saveHomeSettings(collectSettings());
     saveBtn.textContent = 'Сохранено ✓';
     saveBtn.style.background = '#22c55e';
     saveOk.style.display = 'inline';
