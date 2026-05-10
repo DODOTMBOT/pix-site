@@ -1,11 +1,15 @@
 import { navigate } from '../router';
 import { getEmployees, deleteEmployee, getEmployee, getDepartments, getDepartment, deleteDepartment, getAccessEntries, deleteAccessEntry, getRateDocuments, deleteRateDocument } from '../services/storage';
+import { isManagement, isSuperAdmin } from '../services/auth';
+import { buildUsersTableEl } from './admin-users';
 
-type Tab = 'employees' | 'departments' | 'access' | 'rates';
+type Tab = 'employees' | 'departments' | 'access' | 'rates' | 'users';
 
 export function renderAdmin(): HTMLElement {
   const page = document.createElement('div');
   page.className = 'page-enter';
+
+  if (!isManagement()) { navigate('/'); return page; }
 
   let activeTab: Tab = 'employees';
 
@@ -24,19 +28,23 @@ export function renderAdmin(): HTMLElement {
       ">${label}</button>
     `;
 
+    const showAddBtn = activeTab !== 'users';
+
     wrap.innerHTML = `
       <div class="container">
         <section style="padding:40px 0 64px;">
           <button class="btn btn-ghost" id="back-site" style="margin-bottom:24px;">← Назад на сайт</button>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
             <h1 style="font-size:28px;font-weight:700;letter-spacing:-0.02em;">Управление структурой</h1>
-            <button class="btn btn-primary" id="add-btn">+ Добавить</button>
+            ${showAddBtn ? '<button class="btn btn-primary" id="add-btn">+ Добавить</button>' : ''}
+            ${activeTab === 'users' ? '<button class="btn btn-primary" id="add-user-btn">+ Новый пользователь</button>' : ''}
           </div>
           <div style="display:flex;gap:0;border-bottom:1px solid #e5e7eb;margin-bottom:24px;">
             ${tabBtn('employees', 'Сотрудники')}
             ${tabBtn('departments', 'Отделы')}
             ${tabBtn('access', 'Доступы')}
             ${tabBtn('rates', 'Ставки')}
+            ${isSuperAdmin() ? tabBtn('users', 'Пользователи') : ''}
           </div>
           <div id="tab-content"></div>
         </section>
@@ -45,12 +53,14 @@ export function renderAdmin(): HTMLElement {
 
     wrap.querySelector('#back-site')!.addEventListener('click', () => navigate('/'));
 
-    wrap.querySelector('#add-btn')!.addEventListener('click', () => {
+    wrap.querySelector('#add-btn')?.addEventListener('click', () => {
       if (activeTab === 'employees')        navigate('/admin/employee/new');
       else if (activeTab === 'departments') navigate('/admin/department/new');
       else if (activeTab === 'access')      navigate('/admin/access/new');
       else                                  navigate('/admin/rates/new');
     });
+
+    wrap.querySelector('#add-user-btn')?.addEventListener('click', () => navigate('/admin/users/new'));
 
     wrap.querySelectorAll<HTMLButtonElement>('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -66,8 +76,10 @@ export function renderAdmin(): HTMLElement {
       tabContent.appendChild(buildDepartmentsTable());
     } else if (activeTab === 'access') {
       tabContent.appendChild(buildAccessTable());
-    } else {
+    } else if (activeTab === 'rates') {
       tabContent.appendChild(buildRatesTable());
+    } else {
+      tabContent.appendChild(buildUsersTableEl(rebuild));
     }
 
     return wrap;

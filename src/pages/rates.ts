@@ -1,5 +1,6 @@
 import { navigate } from '../router';
 import { getRateDocuments } from '../services/storage';
+import { filterByPizzeria } from '../services/auth';
 import type { RateDocument } from '../types';
 
 export function renderRates(): HTMLElement {
@@ -12,7 +13,7 @@ export function renderRates(): HTMLElement {
 
   function buildContent(): HTMLElement {
     const wrap = document.createElement('div');
-    const docs  = getRateDocuments();
+    const docs  = filterByPizzeria(getRateDocuments());
 
     if (docs.length > 0 && !selectedId) selectedId = docs[0].id;
     const selectedDoc = docs.find(d => d.id === selectedId) ?? null;

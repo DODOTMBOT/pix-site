@@ -1,0 +1,7 @@
+{
+  "_comment": "Добавь эти пакеты в зависимости существующего backend: npm install bcrypt jsonwebtoken",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

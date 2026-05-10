@@ -12,7 +12,8 @@ layout.className = 'layout';
 const main = document.createElement('main');
 main.style.cssText = 'flex: 1;';
 
-layout.appendChild(renderHeader());
+const header = renderHeader();
+layout.appendChild(header);
 layout.appendChild(main);
 layout.appendChild(renderFooter());
 app.appendChild(layout);

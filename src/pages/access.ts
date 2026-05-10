@@ -1,5 +1,6 @@
 import { navigate } from '../router';
 import { getAccessEntries } from '../services/storage';
+import { filterByPizzeria } from '../services/auth';
 
 export function renderAccess(): HTMLElement {
   const page = document.createElement('div');
@@ -13,7 +14,7 @@ export function renderAccess(): HTMLElement {
 
   function buildContent(): HTMLElement {
     const wrap = document.createElement('div');
-    const all  = getAccessEntries();
+    const all  = filterByPizzeria(getAccessEntries());
 
     const pizzerias = ['Все', ...Array.from(new Set(all.map(e => e.pizzeria).filter(Boolean)))];
     const filtered  = filterPizzeria === 'Все' ? all : all.filter(e => e.pizzeria === filterPizzeria);

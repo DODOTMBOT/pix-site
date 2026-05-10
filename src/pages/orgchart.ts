@@ -1,6 +1,7 @@
 import { navigate } from '../router';
 import { getEmployees, getDepartments } from '../services/storage';
 import { getAvatarColor, getInitials } from '../components/orgchart-node';
+import { filterByPizzeria } from '../services/auth';
 import type { Employee, Department } from '../types';
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
@@ -202,7 +203,7 @@ export function renderOrgChart(): HTMLElement {
   const page = document.createElement('div');
   page.className = 'page-enter';
 
-  const employees   = getEmployees();
+  const employees   = filterByPizzeria(getEmployees());
   const departments = getDepartments();
 
   let treeContent: HTMLElement;
