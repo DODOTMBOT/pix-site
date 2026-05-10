@@ -323,19 +323,19 @@ tr:last-child td {
   100% { background-position: -200% 0; }
 }
 
-/* ─── Org chart (priority levels) ────────────────── */
+/* ─── Org chart ───────────────────────────────────── */
 .org-page {
-  padding: 24px;
-  max-width: 1200px;
-  margin: 0 auto;
+  padding: 24px 32px;
+  overflow-x: auto;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 24px;
 }
 
 .priority-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: row;
+  flex-wrap: nowrap;
   gap: 16px;
   align-items: flex-start;
 }
@@ -344,26 +344,11 @@ tr:last-child td {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 14px;
+  padding: 12px;
   width: 200px;
   flex-shrink: 0;
-}
-
-.dept-block.nested {
-  background: var(--bg-secondary);
-  border-style: dashed;
-  min-width: 0;
-  max-width: none;
-  flex: 1;
-}
-
-.dept-children {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px dashed var(--border);
+  flex-grow: 0;
+  box-sizing: border-box;
 }
 
 .dept-title {
@@ -371,80 +356,69 @@ tr:last-child td {
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--text-muted);
+  text-transform: uppercase;
   margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dept-leader-row {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  min-height: 56px;
-  margin-bottom: 8px;
-  padding-bottom: 8px;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
   border-bottom: 1px solid var(--border);
+  overflow: hidden;
   transition: opacity 0.15s;
+}
+
+.dept-leader-row:last-of-type {
+  margin-bottom: 8px;
 }
 
 .dept-leader-row:hover { opacity: 0.75; }
 
-.dept-leaders-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  min-height: 56px;
-  align-items: flex-start;
-  margin-bottom: 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--border);
-}
-
-.dept-leader-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-  min-width: 0;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 6px 10px;
-  transition: border-color 0.15s;
-}
-
-.dept-leader-item:hover { border-color: var(--accent); }
-
-.dept-leader-item .emp-name {
-  white-space: normal;
-  word-break: break-word;
+.dept-leader-name {
   font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  line-height: 1.3;
 }
 
-.dept-leader-item .emp-position {
+.dept-leader-pos {
   font-size: 11px;
   color: var(--text-secondary);
-  white-space: normal;
-  word-break: break-word;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  line-height: 1.3;
 }
 
 .dept-members {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .emp-card {
   display: flex;
+  flex-direction: row;
   align-items: flex-start;
   gap: 8px;
-  padding: 6px 10px;
+  padding: 8px;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  width: 160px;
-  min-height: 56px;
-  flex-shrink: 0;
-  flex-grow: 0;
+  width: 100%;
+  box-sizing: border-box;
   overflow: hidden;
   transition: border-color 0.15s, background 0.15s;
 }
@@ -468,20 +442,23 @@ tr:last-child td {
 .emp-avatar.sm { width: 24px; height: 24px; font-size: 9px; }
 
 .emp-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  min-width: 0;
 }
 
 .emp-firstname,
 .emp-lastname {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 110px;
+  width: 100%;
+  display: block;
   line-height: 1.3;
 }
 
@@ -492,7 +469,8 @@ tr:last-child td {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 120px;
+  width: 100%;
+  display: block;
 }
 
 .emp-position {
@@ -501,7 +479,9 @@ tr:last-child td {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 120px;
+  width: 100%;
+  display: block;
+  margin-top: 2px;
 }
 
 .emp-pizzeria {
@@ -510,7 +490,8 @@ tr:last-child td {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 120px;
+  width: 100%;
+  display: block;
 }
 
 /* ─── Rate tables ─────────────────────────────────── */
@@ -712,5 +693,5 @@ footer {
   .cards-grid { grid-template-columns: 1fr; }
   .metrics-inner { gap: 40px; flex-wrap: wrap; }
   .metric-value { font-size: 36px; }
-  .priority-row { grid-template-columns: 1fr; }
+  .priority-row { flex-wrap: wrap; }
 }

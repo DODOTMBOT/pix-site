@@ -18,7 +18,9 @@ function avatarHtml(emp: Employee, cls: string): string {
 function renderModal(emp: Employee, allEmployees: Employee[], onClose: () => void): HTMLElement {
   const overlay = document.createElement('div');
   overlay.style.cssText = `
-    position:fixed;inset:0;background:rgba(0,0,0,0.45);
+    position:fixed;inset:0;
+    background:rgba(0,0,0,0.55);
+    backdrop-filter:blur(4px);
     z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;
   `;
 
@@ -29,34 +31,34 @@ function renderModal(emp: Employee, allEmployees: Employee[], onClose: () => voi
     : `<div style="width:72px;height:72px;border-radius:50%;background:${getAvatarColor(emp.name)};color:#fff;font-size:26px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">${getInitials(emp.name)}</div>`;
 
   const extraHtml = (emp.extraFields ?? []).map(f => `
-    <div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid #f3f4f6;">
-      <span style="font-size:13px;color:#6b7280;min-width:120px;">${f.label}</span>
-      <span style="font-size:13px;color:#111;">${f.value}</span>
+    <div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:13px;color:var(--text-secondary);min-width:120px;">${f.label}</span>
+      <span style="font-size:13px;color:var(--text-primary);">${f.value}</span>
     </div>`).join('');
 
   const colleaguesHtml = colleagues.length
     ? `<div style="margin-top:16px;">
-        <div style="font-size:11px;font-weight:600;letter-spacing:0.08em;color:#6b7280;text-transform:uppercase;margin-bottom:10px;">Коллеги по отделу</div>
-        ${colleagues.map(s => `<div class="modal-sub-link" data-id="${s.id}" style="font-size:13px;color:#f97316;cursor:pointer;padding:4px 0;">${s.name} — ${s.position}</div>`).join('')}
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.08em;color:var(--text-secondary);text-transform:uppercase;margin-bottom:10px;">Коллеги по отделу</div>
+        ${colleagues.map(s => `<div class="modal-sub-link" data-id="${s.id}" style="font-size:13px;color:var(--accent);cursor:pointer;padding:4px 0;">${s.name} — ${s.position}</div>`).join('')}
       </div>`
     : '';
 
   overlay.innerHTML = `
-    <div style="background:#fff;border-radius:16px;padding:32px;max-width:480px;width:100%;position:relative;max-height:90vh;overflow-y:auto;">
-      <button id="modal-close" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:20px;color:#9ca3af;cursor:pointer;line-height:1;">✕</button>
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:32px;max-width:480px;width:100%;position:relative;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);">
+      <button id="modal-close" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:20px;color:var(--text-muted);cursor:pointer;line-height:1;">✕</button>
       ${avatarContent}
-      <h2 style="font-size:20px;font-weight:700;text-align:center;margin-bottom:4px;">${emp.name}</h2>
-      <div style="text-align:center;font-size:14px;color:#6b7280;margin-bottom:20px;">${emp.position} · ${emp.department}</div>
-      <div style="border-top:1px solid #f3f4f6;padding-top:16px;">
+      <h2 style="font-size:20px;font-weight:700;text-align:center;margin-bottom:4px;color:var(--text-primary);">${emp.name}</h2>
+      <div style="text-align:center;font-size:14px;color:var(--text-secondary);margin-bottom:20px;">${emp.position} · ${emp.department}</div>
+      <div style="border-top:1px solid var(--border);padding-top:16px;">
         ${[
           ['Отдел', emp.department],
           ['Пиццерия', emp.pizzeria],
           ['Email', emp.email],
           ['Телефон', emp.phone],
         ].filter(([, v]) => v).map(([l, v]) => `
-          <div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid #f3f4f6;">
-            <span style="font-size:13px;color:#6b7280;min-width:120px;">${l}</span>
-            <span style="font-size:13px;color:#111;">${v}</span>
+          <div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
+            <span style="font-size:13px;color:var(--text-secondary);min-width:120px;">${l}</span>
+            <span style="font-size:13px;color:var(--text-primary);">${v}</span>
           </div>`).join('')}
         ${extraHtml}
       </div>
@@ -82,7 +84,7 @@ function renderModal(emp: Employee, allEmployees: Employee[], onClose: () => voi
   return overlay;
 }
 
-// ─── Org tree rendering ───────────────────────────────────────────────────────
+// ─── Emp card ─────────────────────────────────────────────────────────────────
 
 function splitName(fullName: string): [string, string] {
   const parts = fullName.trim().split(/\s+/);
@@ -96,69 +98,49 @@ function buildEmpCard(emp: Employee, onClick: (emp: Employee) => void): HTMLElem
   card.innerHTML = `
     ${avatarHtml(emp, '')}
     <div class="emp-info">
-      <div class="emp-firstname">${first}</div>
-      ${last ? `<div class="emp-lastname">${last}</div>` : ''}
-      <div class="emp-position">${emp.position}</div>
-      ${emp.pizzeria ? `<div class="emp-pizzeria">${emp.pizzeria}</div>` : ''}
+      <span class="emp-firstname">${first}</span>
+      ${last ? `<span class="emp-lastname">${last}</span>` : ''}
+      <span class="emp-position">${emp.position}</span>
+      ${emp.pizzeria ? `<span class="emp-pizzeria">${emp.pizzeria}</span>` : ''}
     </div>
   `;
   card.addEventListener('click', () => onClick(emp));
   return card;
 }
 
+// ─── Dept block (non-recursive) ───────────────────────────────────────────────
+
 function buildDeptBlock(
   dept: Department,
-  allDepts: Department[],
   allEmps: Employee[],
   onClick: (emp: Employee) => void,
-  nested = false
 ): HTMLElement {
   const block = document.createElement('div');
-  block.className = nested ? 'dept-block nested' : 'dept-block';
+  block.className = 'dept-block';
 
-  const leaders  = dept.leaderIds.map(lid => allEmps.find(e => e.id === lid)).filter(Boolean) as Employee[];
+  const leaders    = dept.leaderIds.map(lid => allEmps.find(e => e.id === lid)).filter(Boolean) as Employee[];
   const leaderIdSet = new Set(dept.leaderIds);
-  const members  = allEmps.filter(e => e.departmentId === dept.id && !leaderIdSet.has(e.id));
-  const children = allDepts.filter(d => d.parentDepartmentId === dept.id);
+  const members    = allEmps.filter(e => e.departmentId === dept.id && !leaderIdSet.has(e.id));
 
   const titleEl = document.createElement('div');
   titleEl.className = 'dept-title';
   titleEl.textContent = dept.name.toUpperCase();
   block.appendChild(titleEl);
 
-  if (leaders.length === 1) {
-    const leader = leaders[0];
-    const leaderRow = document.createElement('div');
-    leaderRow.className = 'dept-leader-row';
-    leaderRow.style.cursor = 'pointer';
-    leaderRow.innerHTML = `
+  leaders.forEach(leader => {
+    const row = document.createElement('div');
+    row.className = 'dept-leader-row';
+    row.style.cursor = 'pointer';
+    row.innerHTML = `
       ${avatarHtml(leader, 'sm')}
-      <div>
-        <span class="emp-name">${leader.name}</span>
-        <span class="emp-position"> · ${leader.position}</span>
+      <div style="min-width:0;overflow:hidden;flex:1;">
+        <span class="dept-leader-name">${leader.name}</span>
+        <span class="dept-leader-pos">${leader.position}</span>
       </div>
     `;
-    leaderRow.addEventListener('click', () => onClick(leader));
-    block.appendChild(leaderRow);
-  } else if (leaders.length > 1) {
-    const leadersRow = document.createElement('div');
-    leadersRow.className = 'dept-leaders-row';
-    leaders.forEach(leader => {
-      const item = document.createElement('div');
-      item.className = 'dept-leader-item';
-      item.style.cursor = 'pointer';
-      item.innerHTML = `
-        ${avatarHtml(leader, 'sm')}
-        <div>
-          <div class="emp-name">${leader.name}</div>
-          <div class="emp-position">${leader.position}</div>
-        </div>
-      `;
-      item.addEventListener('click', () => onClick(leader));
-      leadersRow.appendChild(item);
-    });
-    block.appendChild(leadersRow);
-  }
+    row.addEventListener('click', () => onClick(leader));
+    block.appendChild(row);
+  });
 
   if (members.length > 0) {
     const membersWrap = document.createElement('div');
@@ -167,41 +149,48 @@ function buildDeptBlock(
     block.appendChild(membersWrap);
   }
 
-  if (children.length > 0) {
-    const childrenWrap = document.createElement('div');
-    childrenWrap.className = 'dept-children';
-    children.forEach(child => childrenWrap.appendChild(buildDeptBlock(child, allDepts, allEmps, onClick, true)));
-    block.appendChild(childrenWrap);
-  }
-
   return block;
 }
+
+// ─── Org tree (BFS, flat rows — no nested DOM blocks) ────────────────────────
 
 function buildOrgTree(
   employees: Employee[],
   departments: Department[],
-  onClick: (emp: Employee) => void
+  onClick: (emp: Employee) => void,
 ): HTMLElement {
-  const page = document.createElement('div');
-  page.className = 'org-page';
+  const wrap = document.createElement('div');
+  wrap.className = 'org-page';
 
-  // Only root depts (no parent) participate in priority grouping
   const rootDepts = departments.filter(d => !d.parentDepartmentId);
 
-  // Collect unique priority levels sorted ascending
+  // Root level: group by priority field → one row per priority value
   const priorities = [...new Set(rootDepts.map(d => d.priority))].sort((a, b) => a - b);
-
-  priorities.forEach(priority => {
-    const depts = rootDepts.filter(d => d.priority === priority);
-
-    const rowEl = document.createElement('div');
-    rowEl.className = 'priority-row';
-    depts.forEach(dept => rowEl.appendChild(buildDeptBlock(dept, departments, employees, onClick, false)));
-
-    page.appendChild(rowEl);
+  priorities.forEach(p => {
+    const depts = rootDepts.filter(d => d.priority === p);
+    const row = document.createElement('div');
+    row.className = 'priority-row';
+    depts.forEach(dept => row.appendChild(buildDeptBlock(dept, employees, onClick)));
+    wrap.appendChild(row);
   });
 
-  return page;
+  // Deeper levels: BFS, one flat row per depth
+  let currentIds = rootDepts.map(d => d.id);
+  while (currentIds.length > 0) {
+    const children = departments.filter(
+      d => d.parentDepartmentId !== null && currentIds.includes(d.parentDepartmentId!)
+    );
+    if (children.length === 0) break;
+
+    const row = document.createElement('div');
+    row.className = 'priority-row';
+    children.forEach(dept => row.appendChild(buildDeptBlock(dept, employees, onClick)));
+    wrap.appendChild(row);
+
+    currentIds = children.map(d => d.id);
+  }
+
+  return wrap;
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -218,8 +207,8 @@ export function renderOrgChart(): HTMLElement {
     treeContent = document.createElement('div');
     treeContent.innerHTML = `
       <div style="text-align:center;padding:80px 20px;">
-        <div style="font-size:16px;font-weight:600;margin-bottom:8px;">Структура не настроена</div>
-        <div style="font-size:14px;color:#6b7280;margin-bottom:24px;">Перейдите в Админку чтобы добавить отделы</div>
+        <div style="font-size:16px;font-weight:600;margin-bottom:8px;color:var(--text-primary);">Структура не настроена</div>
+        <div style="font-size:14px;color:var(--text-secondary);margin-bottom:24px;">Перейдите в Админку чтобы добавить отделы</div>
         <button class="btn btn-primary" id="goto-admin">Открыть Админку</button>
       </div>
     `;
@@ -236,8 +225,8 @@ export function renderOrgChart(): HTMLElement {
       <section style="padding:40px 0 64px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;">
           <div>
-            <div style="font-size:11px;font-weight:600;letter-spacing:0.12em;color:#6b7280;text-transform:uppercase;margin-bottom:8px;">Организация</div>
-            <h1 style="font-size:28px;font-weight:700;letter-spacing:-0.02em;">Структура компании</h1>
+            <div style="font-size:11px;font-weight:600;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px;">Организация</div>
+            <h1 style="font-size:28px;font-weight:700;letter-spacing:-0.02em;color:var(--text-primary);">Структура компании</h1>
           </div>
           <div style="display:flex;gap:8px;">
             <button class="btn btn-outline" id="reset-btn" style="font-size:13px;padding:8px 16px;color:#ef4444;border-color:#fecaca;">Сброс данных</button>
