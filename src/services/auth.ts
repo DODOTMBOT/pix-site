@@ -75,7 +75,11 @@ export function filterByPizzeria<T extends { pizzeria: string }>(items: T[]): T[
   if (isManagement()) return items;
   const user = getUser();
   if (!user || !user.pizzerias.length) return [];
-  return items.filter(item =>
-    user.pizzerias.includes(item.pizzeria) || item.pizzeria === 'Все'
-  );
+  const userPizzerias = user.pizzerias.map(p => p.trim().toLowerCase());
+  return items.filter(item => {
+    const itemPizzeria = item.pizzeria.trim().toLowerCase();
+    return itemPizzeria === 'все' ||
+           itemPizzeria === 'all' ||
+           userPizzerias.includes(itemPizzeria);
+  });
 }
