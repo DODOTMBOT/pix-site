@@ -1,8 +1,9 @@
-import type { Employee, Department, AccessEntry } from '../types';
+import type { Employee, Department, AccessEntry, RateDocument } from '../types';
 
 const EMP_KEY    = 'pix_employees';
 const DEPT_KEY   = 'pix_departments';
 const ACCESS_KEY = 'pix_access';
+const RATES_KEY  = 'pix_rates';
 
 // ─── Seed data ───────────────────────────────────────────────────────────────
 
@@ -120,6 +121,54 @@ export function deleteEmployee(id: string): void {
   );
 }
 
+// ─── Rate documents seed ──────────────────────────────────────────────────────
+
+const RATES_SEED: RateDocument[] = [
+  {
+    id: 'rate1',
+    pizzeria: 'Немчиновка-1',
+    title: 'Система оплаты труда',
+    updatedAt: '2026-05-04T00:00:00.000Z',
+    sections: [
+      {
+        id: 'rs1',
+        title: 'Работники кухни',
+        tables: [
+          {
+            id: 'rt1',
+            title: 'Почасовые ставки',
+            rows: [
+              { isHeader: true, cells: [{ value: 'Позиция', highlight: 'dark', bold: true }, { value: 'Ставка, руб/ч', highlight: 'dark', bold: true }] },
+              { cells: [{ value: 'Стажёр' }, { value: '300' }] },
+              { cells: [{ value: 'Пиццамейкер' }, { value: '310' }] },
+              { cells: [{ value: 'Универсал' }, { value: '325' }] },
+              { cells: [{ value: 'Наставник' }, { value: '325' }] },
+              { cells: [{ value: 'Менеджер смены', bold: true }, { value: '365', bold: true }] },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'rs2',
+        title: 'Курьеры',
+        tables: [
+          {
+            id: 'rt2',
+            title: 'Ставки доставки',
+            rows: [
+              { isHeader: true, cells: [{ value: 'Параметр', highlight: 'dark', bold: true }, { value: 'Ставка', highlight: 'dark', bold: true }] },
+              { cells: [{ value: 'Автомобильный', highlight: 'orange', bold: true }, { value: '—', highlight: 'orange' }] },
+              { cells: [{ value: 'Час' }, { value: '115 руб' }] },
+              { cells: [{ value: 'Заказ' }, { value: '135 руб' }] },
+              { cells: [{ value: 'Км' }, { value: '8 руб' }] },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+];
+
 // ─── Access CRUD ──────────────────────────────────────────────────────────────
 
 export function getAccessEntries(): AccessEntry[] {
@@ -143,4 +192,33 @@ export function updateAccessEntry(id: string, data: Partial<AccessEntry>): void 
 
 export function deleteAccessEntry(id: string): void {
   saveAccessEntries(getAccessEntries().filter(e => e.id !== id));
+}
+
+// ─── Rate documents CRUD ──────────────────────────────────────────────────────
+
+export function getRateDocuments(): RateDocument[] {
+  const raw = localStorage.getItem(RATES_KEY);
+  if (raw) return JSON.parse(raw) as RateDocument[];
+  saveRateDocuments(RATES_SEED);
+  return RATES_SEED;
+}
+
+function saveRateDocuments(docs: RateDocument[]): void {
+  localStorage.setItem(RATES_KEY, JSON.stringify(docs));
+}
+
+export function getRateDocument(id: string): RateDocument | undefined {
+  return getRateDocuments().find(d => d.id === id);
+}
+
+export function saveRateDocument(doc: RateDocument): void {
+  const all = getRateDocuments();
+  const idx = all.findIndex(d => d.id === doc.id);
+  if (idx >= 0) all[idx] = doc;
+  else all.push(doc);
+  saveRateDocuments(all);
+}
+
+export function deleteRateDocument(id: string): void {
+  saveRateDocuments(getRateDocuments().filter(d => d.id !== id));
 }

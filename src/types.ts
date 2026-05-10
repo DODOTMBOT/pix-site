@@ -19,6 +19,41 @@ export interface Department {
   color?: string;
 }
 
+export interface RateCell {
+  value: string;
+  bold?: boolean;
+  align?: 'left' | 'center' | 'right';
+  colspan?: number;
+  rowspan?: number;
+  highlight?: 'orange' | 'dark' | 'none';
+}
+
+export interface RateRow {
+  cells: RateCell[];
+  isHeader?: boolean;
+}
+
+export interface RateTable {
+  id: string;
+  title: string;
+  note?: string;
+  rows: RateRow[];
+}
+
+export interface RateSection {
+  id: string;
+  title: string;
+  tables: RateTable[];
+}
+
+export interface RateDocument {
+  id: string;
+  pizzeria: string;
+  title: string;
+  sections: RateSection[];
+  updatedAt: string;
+}
+
 export interface AccessEntry {
   id: string;
   serviceName: string;

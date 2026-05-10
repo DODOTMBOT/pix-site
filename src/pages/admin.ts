@@ -1,7 +1,7 @@
 import { navigate } from '../router';
-import { getEmployees, deleteEmployee, getEmployee, getDepartments, getDepartment, deleteDepartment, getAccessEntries, deleteAccessEntry } from '../services/storage';
+import { getEmployees, deleteEmployee, getEmployee, getDepartments, getDepartment, deleteDepartment, getAccessEntries, deleteAccessEntry, getRateDocuments, deleteRateDocument } from '../services/storage';
 
-type Tab = 'employees' | 'departments' | 'access';
+type Tab = 'employees' | 'departments' | 'access' | 'rates';
 
 export function renderAdmin(): HTMLElement {
   const page = document.createElement('div');
@@ -36,6 +36,7 @@ export function renderAdmin(): HTMLElement {
             ${tabBtn('employees', 'Сотрудники')}
             ${tabBtn('departments', 'Отделы')}
             ${tabBtn('access', 'Доступы')}
+            ${tabBtn('rates', 'Ставки')}
           </div>
           <div id="tab-content"></div>
         </section>
@@ -45,9 +46,10 @@ export function renderAdmin(): HTMLElement {
     wrap.querySelector('#back-site')!.addEventListener('click', () => navigate('/'));
 
     wrap.querySelector('#add-btn')!.addEventListener('click', () => {
-      if (activeTab === 'employees')   navigate('/admin/employee/new');
+      if (activeTab === 'employees')        navigate('/admin/employee/new');
       else if (activeTab === 'departments') navigate('/admin/department/new');
-      else navigate('/admin/access/new');
+      else if (activeTab === 'access')      navigate('/admin/access/new');
+      else                                  navigate('/admin/rates/new');
     });
 
     wrap.querySelectorAll<HTMLButtonElement>('.tab-btn').forEach(btn => {
@@ -62,8 +64,10 @@ export function renderAdmin(): HTMLElement {
       tabContent.appendChild(buildEmployeesTable());
     } else if (activeTab === 'departments') {
       tabContent.appendChild(buildDepartmentsTable());
-    } else {
+    } else if (activeTab === 'access') {
       tabContent.appendChild(buildAccessTable());
+    } else {
+      tabContent.appendChild(buildRatesTable());
     }
 
     return wrap;
@@ -245,6 +249,64 @@ export function renderAdmin(): HTMLElement {
       btn.addEventListener('click', () => {
         if (confirm(`Удалить доступ "${btn.dataset['name']}"?`)) {
           deleteAccessEntry(btn.dataset['id']!);
+          rebuild();
+        }
+      });
+    });
+
+    return el;
+  }
+
+  function buildRatesTable(): HTMLElement {
+    const docs = getRateDocuments();
+    const el   = document.createElement('div');
+
+    const rowsHtml = docs.length === 0
+      ? `<tr><td colspan="4" style="text-align:center;padding:40px;color:#9ca3af;font-size:14px;">Документов нет</td></tr>`
+      : docs.map(doc => {
+          const updDate = new Date(doc.updatedAt).toLocaleDateString('ru-RU');
+          return `
+            <tr>
+              <td style="padding:13px 16px;font-weight:500;">${doc.pizzeria}</td>
+              <td style="padding:13px 16px;color:#6b7280;">${doc.title}</td>
+              <td style="padding:13px 16px;color:#9ca3af;font-size:13px;">${updDate}</td>
+              <td style="padding:13px 16px;">
+                <div style="display:flex;gap:8px;">
+                  <button class="rate-edit" data-id="${doc.id}" style="font-size:12px;padding:5px 12px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;cursor:pointer;color:#374151;">Изменить</button>
+                  <button class="rate-delete" data-id="${doc.id}" data-name="${doc.pizzeria}" style="font-size:12px;padding:5px 12px;border:1px solid #fecaca;border-radius:6px;background:#fff;cursor:pointer;color:#ef4444;">Удалить</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+    el.innerHTML = `
+      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:1px solid #e5e7eb;background:#f9fafb;">
+              ${['Пиццерия','Заголовок','Обновлено','Действия'].map(h =>
+                `<th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;letter-spacing:0.08em;color:#6b7280;text-transform:uppercase;">${h}</th>`
+              ).join('')}
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    `;
+
+    el.querySelectorAll<HTMLButtonElement>('.rate-edit').forEach(btn => {
+      btn.addEventListener('mouseenter', () => { btn.style.background = '#f9fafb'; });
+      btn.addEventListener('mouseleave', () => { btn.style.background = '#fff'; });
+      btn.addEventListener('click', () => navigate(`/admin/rates/${btn.dataset['id']}`));
+    });
+
+    el.querySelectorAll<HTMLButtonElement>('.rate-delete').forEach(btn => {
+      btn.addEventListener('mouseenter', () => { btn.style.background = '#fef2f2'; });
+      btn.addEventListener('mouseleave', () => { btn.style.background = '#fff'; });
+      btn.addEventListener('click', () => {
+        if (confirm(`Удалить документ "${btn.dataset['name']}"?`)) {
+          deleteRateDocument(btn.dataset['id']!);
           rebuild();
         }
       });
