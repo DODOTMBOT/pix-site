@@ -1102,3 +1102,26 @@ footer {
   .metric-value { font-size: 36px; }
   .priority-row { flex-wrap: wrap; }
 }
+
+/* ─── Motivation Setup ────────────────────────────── */
+.motiv-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.motiv-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 14px;
+}
+
+.motiv-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: block;
+  margin-bottom: 5px;
+}

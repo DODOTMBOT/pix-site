@@ -1,4 +1,4 @@
-import type { Employee, Department, AccessEntry, RateDocument, HomeSettings } from '../types';
+import type { Employee, Department, AccessEntry, RateDocument, HomeSettings, MotivationMetric, MotivationPlan } from '../types';
 
 // ─── Home settings ────────────────────────────────────────────────────────────
 
@@ -22,6 +22,53 @@ export function getHomeSettings(): HomeSettings {
 
 export function saveHomeSettings(settings: HomeSettings): void {
   localStorage.setItem(HOME_KEY, JSON.stringify(settings));
+}
+
+// ─── Motivation ───────────────────────────────────────────────────────────────
+
+const METRICS_KEY = 'pix_motivation_metrics';
+const PLANS_KEY   = 'pix_motivation_plans';
+
+const METRICS_SEED: MotivationMetric[] = [
+  { id: 'm1', name: 'NPS',               block: 'ratings', direction: 'higher', unit: 'балл' },
+  { id: 'm2', name: 'Скорость доставки', block: 'ratings', direction: 'lower',  unit: 'мин'  },
+  { id: 'm3', name: 'Выручка',           block: 'profit',  direction: 'higher', unit: '₽'    },
+  { id: 'm4', name: 'Food cost',         block: 'profit',  direction: 'lower',  unit: '%'    },
+];
+
+export function getMetrics(): MotivationMetric[] {
+  const raw = localStorage.getItem(METRICS_KEY);
+  if (raw) return JSON.parse(raw) as MotivationMetric[];
+  saveMetrics(METRICS_SEED);
+  return METRICS_SEED;
+}
+
+export function saveMetrics(metrics: MotivationMetric[]): void {
+  localStorage.setItem(METRICS_KEY, JSON.stringify(metrics));
+}
+
+export function getPlans(): MotivationPlan[] {
+  const raw = localStorage.getItem(PLANS_KEY);
+  return raw ? JSON.parse(raw) as MotivationPlan[] : [];
+}
+
+export function savePlan(plan: MotivationPlan): void {
+  const all = getPlans();
+  const idx = all.findIndex(p => p.id === plan.id);
+  if (idx >= 0) all[idx] = plan; else all.push(plan);
+  localStorage.setItem(PLANS_KEY, JSON.stringify(all));
+}
+
+export function getPlan(id: string): MotivationPlan | undefined {
+  return getPlans().find(p => p.id === id);
+}
+
+export function getPlanByPizzeriaMonth(pizzeria: string, month: string): MotivationPlan | undefined {
+  return getPlans().find(p => p.pizzeria === pizzeria && p.month === month);
+}
+
+export function deletePlan(id: string): void {
+  localStorage.setItem(PLANS_KEY, JSON.stringify(getPlans().filter(p => p.id !== id)));
 }
 
 // ─── Contacts ─────────────────────────────────────────────────────────────────

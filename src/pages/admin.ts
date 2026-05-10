@@ -1,9 +1,9 @@
 import { navigate } from '../router';
-import { getEmployees, deleteEmployee, getEmployee, getDepartments, getDepartment, deleteDepartment, getAccessEntries, deleteAccessEntry, getRateDocuments, deleteRateDocument, getContacts, saveContacts } from '../services/storage';
+import { getEmployees, deleteEmployee, getEmployee, getDepartments, getDepartment, deleteDepartment, getAccessEntries, deleteAccessEntry, getRateDocuments, deleteRateDocument, getContacts, saveContacts, getMetrics, saveMetrics, getPlans, deletePlan } from '../services/storage';
 import { isManagement, isSuperAdmin } from '../services/auth';
 import { buildUsersTableEl } from './admin-users';
 
-type Tab = 'employees' | 'departments' | 'access' | 'rates' | 'users' | 'home' | 'contacts';
+type Tab = 'employees' | 'departments' | 'access' | 'rates' | 'users' | 'home' | 'contacts' | 'motivation';
 
 export function renderAdmin(): HTMLElement {
   const page = document.createElement('div');
@@ -29,7 +29,7 @@ export function renderAdmin(): HTMLElement {
     `;
 
     const noAddBtn = activeTab === 'users' || activeTab === 'home';
-    const showAddBtn = !noAddBtn && activeTab !== 'contacts';
+    const showAddBtn = !noAddBtn && activeTab !== 'contacts' && activeTab !== 'motivation';
 
     wrap.innerHTML = `
       <div class="container">
@@ -40,7 +40,8 @@ export function renderAdmin(): HTMLElement {
             ${showAddBtn ? '<button class="btn btn-primary" id="add-btn">+ Добавить</button>' : ''}
             ${activeTab === 'users' ? '<button class="btn btn-primary" id="add-user-btn">+ Новый пользователь</button>' : ''}
             ${activeTab === 'home' ? '<button class="btn btn-primary" id="edit-home-btn">Редактировать</button>' : ''}
-            ${activeTab === 'contacts' ? '<button class="btn btn-primary" id="add-contact-btn">+ Добавить контакт</button>' : ''}
+            ${activeTab === 'contacts'   ? '<button class="btn btn-primary" id="add-contact-btn">+ Добавить контакт</button>' : ''}
+            ${activeTab === 'motivation' ? '<button class="btn btn-primary" id="add-motiv-btn">+ Новый план</button>' : ''}
           </div>
           <div style="display:flex;gap:0;border-bottom:1px solid #e5e7eb;margin-bottom:24px;">
             ${tabBtn('employees', 'Сотрудники')}
@@ -50,6 +51,7 @@ export function renderAdmin(): HTMLElement {
             ${isSuperAdmin() ? tabBtn('users', 'Пользователи') : ''}
             ${tabBtn('home', 'Главная')}
             ${tabBtn('contacts', 'Контакты')}
+            ${tabBtn('motivation', 'Мотивация')}
           </div>
           <div id="tab-content"></div>
         </section>
@@ -68,6 +70,7 @@ export function renderAdmin(): HTMLElement {
     wrap.querySelector('#add-user-btn')?.addEventListener('click', () => navigate('/admin/users/new'));
     wrap.querySelector('#edit-home-btn')?.addEventListener('click', () => navigate('/admin/home'));
     wrap.querySelector('#add-contact-btn')?.addEventListener('click', () => navigate('/admin/contacts/new'));
+    wrap.querySelector('#add-motiv-btn')?.addEventListener('click', () => navigate('/admin/motivation/new'));
 
     wrap.querySelectorAll<HTMLButtonElement>('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -89,6 +92,8 @@ export function renderAdmin(): HTMLElement {
       tabContent.appendChild(buildUsersTableEl(rebuild));
     } else if (activeTab === 'contacts') {
       tabContent.appendChild(buildContactsTable());
+    } else if (activeTab === 'motivation') {
+      tabContent.appendChild(buildMotivationSection());
     } else {
       tabContent.innerHTML = `
         <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:32px;text-align:center;">
@@ -398,6 +403,154 @@ export function renderAdmin(): HTMLElement {
       });
     });
 
+    return el;
+  }
+
+  function buildMotivationSection(): HTMLElement {
+    const el = document.createElement('div');
+    el.style.cssText = 'display:flex;flex-direction:column;gap:20px;';
+
+    // ── Metrics library ──
+    const metrics = getMetrics();
+
+    const metricRows = metrics.map(m => `
+      <tr>
+        <td style="padding:11px 16px;font-weight:500;">${m.name}</td>
+        <td style="padding:11px 16px;color:#6b7280;">${m.block === 'ratings' ? 'Рейтинги' : 'Прибыль'}</td>
+        <td style="padding:11px 16px;color:#6b7280;">${m.direction === 'higher' ? '↑ выше' : '↓ ниже'}</td>
+        <td style="padding:11px 16px;color:#6b7280;">${m.unit ?? '—'}</td>
+        <td style="padding:11px 16px;">
+          <button class="metric-del" data-id="${m.id}" data-name="${m.name}"
+            style="font-size:12px;padding:5px 12px;border:1px solid #fecaca;border-radius:6px;background:#fff;cursor:pointer;color:#ef4444;">Удалить</button>
+        </td>
+      </tr>
+    `).join('');
+
+    const metricsCard = document.createElement('div');
+    metricsCard.innerHTML = `
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);">
+          <h2 style="font-size:15px;font-weight:600;margin:0;">Показатели (KPI)</h2>
+        </div>
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border);background:var(--bg-secondary);">
+              ${['Название','Блок','Направление','Единица',''].map(h =>
+                `<th style="padding:9px 16px;text-align:left;font-size:11px;font-weight:600;letter-spacing:0.08em;color:#6b7280;text-transform:uppercase;">${h}</th>`
+              ).join('')}
+            </tr>
+          </thead>
+          <tbody>${metricRows || '<tr><td colspan="5" style="text-align:center;padding:30px;color:#9ca3af;font-size:14px;">Показателей нет</td></tr>'}</tbody>
+        </table>
+        <!-- Добавить показатель -->
+        <div style="padding:16px 20px;border-top:1px solid var(--border);background:var(--bg-secondary);">
+          <div style="display:grid;grid-template-columns:1fr 120px 120px 100px auto;gap:8px;align-items:end;">
+            <div>
+              <div style="font-size:11px;font-weight:600;color:#6b7280;margin-bottom:4px;">Название</div>
+              <input id="nm-name" type="text" placeholder="NPS" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg-input,var(--bg-primary));color:var(--text-primary);outline:none;box-sizing:border-box;">
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:600;color:#6b7280;margin-bottom:4px;">Блок</div>
+              <select id="nm-block" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg-input,var(--bg-primary));color:var(--text-primary);outline:none;box-sizing:border-box;">
+                <option value="ratings">Рейтинги</option>
+                <option value="profit">Прибыль</option>
+              </select>
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:600;color:#6b7280;margin-bottom:4px;">Направление</div>
+              <select id="nm-dir" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg-input,var(--bg-primary));color:var(--text-primary);outline:none;box-sizing:border-box;">
+                <option value="higher">↑ выше</option>
+                <option value="lower">↓ ниже</option>
+              </select>
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:600;color:#6b7280;margin-bottom:4px;">Ед. изм.</div>
+              <input id="nm-unit" type="text" placeholder="балл" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg-input,var(--bg-primary));color:var(--text-primary);outline:none;box-sizing:border-box;">
+            </div>
+            <button id="nm-add" class="btn btn-primary" style="padding:9px 16px;font-size:13px;">Добавить</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    metricsCard.querySelectorAll<HTMLButtonElement>('.metric-del').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (confirm(`Удалить показатель "${btn.dataset['name']}"?`)) {
+          saveMetrics(getMetrics().filter(m => m.id !== btn.dataset['id']));
+          rebuild();
+        }
+      });
+    });
+
+    metricsCard.querySelector('#nm-add')!.addEventListener('click', () => {
+      const name = (metricsCard.querySelector<HTMLInputElement>('#nm-name')!).value.trim();
+      if (!name) return;
+      const block     = (metricsCard.querySelector<HTMLSelectElement>('#nm-block')!).value as 'ratings' | 'profit';
+      const direction = (metricsCard.querySelector<HTMLSelectElement>('#nm-dir')!).value as 'higher' | 'lower';
+      const unit      = (metricsCard.querySelector<HTMLInputElement>('#nm-unit')!).value.trim() || undefined;
+      const newMetrics = [...getMetrics(), { id: Math.random().toString(36).slice(2, 9), name, block, direction, unit }];
+      saveMetrics(newMetrics);
+      rebuild();
+    });
+
+    el.appendChild(metricsCard);
+
+    // ── Plans ──
+    const plans = getPlans();
+
+    const planRows = plans.length === 0
+      ? `<tr><td colspan="5" style="text-align:center;padding:40px;color:#9ca3af;font-size:14px;">Планов нет</td></tr>`
+      : plans.map(p => {
+          const monthLabel = new Date(p.month + '-01').toLocaleDateString('ru-RU', { year: 'numeric', month: 'long' });
+          return `
+            <tr>
+              <td style="padding:13px 16px;font-weight:500;">${p.pizzeria}</td>
+              <td style="padding:13px 16px;color:#6b7280;">${monthLabel}</td>
+              <td style="padding:13px 16px;color:#6b7280;">${p.bonusFund.toLocaleString('ru-RU')} ₽</td>
+              <td style="padding:13px 16px;color:#f97316;">${p.wowFund.toLocaleString('ru-RU')} ₽</td>
+              <td style="padding:13px 16px;">
+                <div style="display:flex;gap:8px;">
+                  <button class="plan-edit" data-id="${p.id}" style="font-size:12px;padding:5px 12px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;cursor:pointer;color:#374151;">Изменить</button>
+                  <button class="plan-del"  data-id="${p.id}" data-name="${p.pizzeria} ${p.month}" style="font-size:12px;padding:5px 12px;border:1px solid #fecaca;border-radius:6px;background:#fff;cursor:pointer;color:#ef4444;">Удалить</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+    const plansCard = document.createElement('div');
+    plansCard.innerHTML = `
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+        <div style="padding:16px 20px;border-bottom:1px solid var(--border);">
+          <h2 style="font-size:15px;font-weight:600;margin:0;">Планы мотивации</h2>
+        </div>
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border);background:var(--bg-secondary);">
+              ${['Пиццерия','Месяц','Бонус. фонд','WOW-фонд','Действия'].map(h =>
+                `<th style="padding:9px 16px;text-align:left;font-size:11px;font-weight:600;letter-spacing:0.08em;color:#6b7280;text-transform:uppercase;">${h}</th>`
+              ).join('')}
+            </tr>
+          </thead>
+          <tbody>${planRows}</tbody>
+        </table>
+      </div>
+    `;
+
+    plansCard.querySelectorAll<HTMLButtonElement>('.plan-edit').forEach(btn => {
+      btn.addEventListener('click', () => navigate(`/admin/motivation/${btn.dataset['id']}`));
+    });
+
+    plansCard.querySelectorAll<HTMLButtonElement>('.plan-del').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (confirm(`Удалить план "${btn.dataset['name']}"?`)) {
+          deletePlan(btn.dataset['id']!);
+          rebuild();
+        }
+      });
+    });
+
+    el.appendChild(plansCard);
     return el;
   }
 

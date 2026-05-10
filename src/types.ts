@@ -81,6 +81,60 @@ export interface HomeSettings {
   blocks: HomeBlock[];
 }
 
+export interface MotivationMetric {
+  id: string;
+  name: string;
+  block: 'ratings' | 'profit';
+  direction: 'higher' | 'lower';
+  unit?: string;
+}
+
+export interface MotivationTarget {
+  metricId: string;
+  weight: number;
+  targetValue: string;
+  wowValue?: string;
+  result?: string;
+  fulfilled?: boolean | null;
+  wowFulfilled?: boolean | null;
+}
+
+export interface ResetCondition {
+  id: string;
+  description: string;
+  criticalValue?: string;
+  triggered?: boolean;
+}
+
+export interface MotivationPlan {
+  id: string;
+  pizzeria: string;
+  month: string;
+  bonusFund: number;
+  wowFund: number;
+  ratingsWeight: number;
+  profitWeight: number;
+  targets: MotivationTarget[];
+  resetConditions: ResetCondition[];
+}
+
+export interface MotivationResult {
+  planId: string;
+  bonusAmount: number;
+  wowAmount: number;
+  totalAmount: number;
+  isReset: boolean;
+  breakdown: {
+    metricId: string;
+    metricName: string;
+    block: string;
+    weight: number;
+    blockWeight: number;
+    earned: number;
+    wowEarned: number;
+  }[];
+}
+
 export interface Contact {
   id: string;
   name: string;
