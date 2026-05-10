@@ -7,108 +7,220 @@ type Tab = 'employees' | 'departments' | 'access' | 'rates' | 'users' | 'home' |
 
 export function renderAdmin(): HTMLElement {
   const page = document.createElement('div');
-  page.className = 'page-enter';
 
   if (!isManagement()) { navigate('/'); return page; }
 
-  let activeTab: Tab = 'employees';
+  // ── Hide site header, restore on navigate away ──────────────────────────
+  const siteHeader = document.querySelector<HTMLElement>('header');
+  if (siteHeader) siteHeader.style.display = 'none';
 
-  function rebuild(): void {
-    page.replaceChildren(buildContent());
+  const restoreHeader = () => { if (siteHeader) siteHeader.style.display = ''; };
+  window.addEventListener('popstate', restoreHeader, { once: true });
+
+  // patch navigate so header restores when leaving /admin
+  const _navigateAway = (path: string) => {
+    if (!path.startsWith('/admin')) restoreHeader();
+    navigate(path);
+  };
+
+  let activeTab: Tab = 'motivation';
+
+  function setTab(tab: Tab): void {
+    activeTab = tab;
+    renderContent();
   }
 
-  function buildContent(): HTMLElement {
+  // ── Sidebar ─────────────────────────────────────────────────────────────
+  function buildSidebar(): HTMLElement {
+    const aside = document.createElement('aside');
+    aside.className = 'admin-sidebar';
+
+    const item = (tab: Tab | null, label: string, icon: string, path?: string) => {
+      const isActive = tab !== null && activeTab === tab;
+      const el = document.createElement('a');
+      el.className = `sidebar-item${isActive ? ' active' : ''}`;
+      el.innerHTML = `<span class="sidebar-icon">${icon}</span><span>${label}</span>`;
+      el.addEventListener('click', e => {
+        e.preventDefault();
+        if (path) { _navigateAway(path); }
+        else if (tab) { setTab(tab); }
+      });
+      return el;
+    };
+
+    const group = (label: string, ...items: HTMLElement[]): HTMLElement => {
+      const el = document.createElement('div');
+      el.className = 'sidebar-group';
+      el.innerHTML = `<div class="sidebar-group-label">${label}</div>`;
+      items.forEach(i => el.appendChild(i));
+      return el;
+    };
+
+    // Logo
+    const logo = document.createElement('div');
+    logo.className = 'sidebar-logo';
+    logo.innerHTML = `<div class="logo-mark" style="font-size:18px;font-weight:900;color:#f97316;">PiX</div><span>Панель управления</span>`;
+
+    // Nav
+    const nav = document.createElement('nav');
+    nav.className = 'sidebar-nav';
+    nav.appendChild(item('home', 'Главная', '🏠'));
+    nav.appendChild(group('Финансы',
+      item('motivation', 'Мотивация', '🏆'),
+      item('rates',      'Ставки',    '💰'),
+    ));
+    nav.appendChild(group('Управляющие',
+      item(null, 'График управляющих', '📅', '/schedule/overview'),
+    ));
+    nav.appendChild(group('PiX',
+      item(null,       'Структура', '🏢', '/org'),
+      item('contacts', 'Контакты',  '👥'),
+      item('access',   'Доступы',   '🔑'),
+    ));
+    if (isSuperAdmin()) {
+      nav.appendChild(group('Система',
+        item('employees',  'Сотрудники',    '👤'),
+        item('departments','Отделы',        '🏗️'),
+        item('users',      'Пользователи',  '⚙️'),
+      ));
+    }
+
+    // Footer
+    const footer = document.createElement('div');
+    footer.className = 'sidebar-footer';
+    const backLink = document.createElement('a');
+    backLink.className = 'sidebar-item';
+    backLink.innerHTML = `<span class="sidebar-icon">←</span><span>На сайт</span>`;
+    backLink.addEventListener('click', e => { e.preventDefault(); _navigateAway('/'); });
+    footer.appendChild(backLink);
+
+    aside.appendChild(logo);
+    aside.appendChild(nav);
+    aside.appendChild(footer);
+    return aside;
+  }
+
+  // ── Content area ─────────────────────────────────────────────────────────
+  const layout  = document.createElement('div');
+  layout.className = 'admin-layout';
+
+  const mainEl  = document.createElement('main');
+  mainEl.className = 'admin-main';
+
+  const contentEl = document.createElement('div');
+  contentEl.className = 'admin-content';
+  mainEl.appendChild(contentEl);
+
+  function rebuild(): void { renderContent(); }
+
+  function renderContent(): void {
+    // re-render sidebar to update active state
+    const oldSidebar = layout.querySelector('.admin-sidebar');
+    const newSidebar = buildSidebar();
+    if (oldSidebar) layout.replaceChild(newSidebar, oldSidebar);
+    else layout.insertBefore(newSidebar, mainEl);
+
+    contentEl.replaceChildren(buildTabContent());
+  }
+
+  function addBtn(label: string, onClick: () => void): HTMLElement {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-primary';
+    btn.textContent = label;
+    btn.addEventListener('click', onClick);
+    return btn;
+  }
+
+  function outlineBtn(label: string, onClick: () => void): HTMLElement {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-outline';
+    btn.textContent = label;
+    btn.addEventListener('click', onClick);
+    return btn;
+  }
+
+  function pageHeader(title: string, ...actions: HTMLElement[]): HTMLElement {
+    const el = document.createElement('div');
+    el.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;';
+    const h1 = document.createElement('h1');
+    h1.style.cssText = 'font-size:24px;font-weight:700;letter-spacing:-0.02em;margin:0;';
+    h1.textContent = title;
+    el.appendChild(h1);
+    if (actions.length) {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:8px;';
+      actions.forEach(a => row.appendChild(a));
+      el.appendChild(row);
+    }
+    return el;
+  }
+
+  function buildTabContent(): HTMLElement {
     const wrap = document.createElement('div');
 
-    const tabBtn = (tab: Tab, label: string) => `
-      <button class="tab-btn" data-tab="${tab}" style="
-        padding:8px 20px;font-size:14px;font-weight:500;border:none;background:none;cursor:pointer;
-        border-bottom:2px solid ${activeTab === tab ? 'var(--accent)' : 'transparent'};
-        color:${activeTab === tab ? 'var(--accent)' : '#6b7280'};transition:color 0.15s;
-      ">${label}</button>
-    `;
-
-    const noAddBtn = activeTab === 'users' || activeTab === 'home';
-    const showAddBtn = !noAddBtn && activeTab !== 'contacts' && activeTab !== 'motivation';
-
-    wrap.innerHTML = `
-      <div class="container">
-        <section style="padding:40px 0 64px;">
-          <button class="btn btn-ghost" id="back-site" style="margin-bottom:24px;">← Назад на сайт</button>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-            <h1 style="font-size:28px;font-weight:700;letter-spacing:-0.02em;">Управление структурой</h1>
-            ${showAddBtn ? '<button class="btn btn-primary" id="add-btn">+ Добавить</button>' : ''}
-            ${activeTab === 'users' ? '<button class="btn btn-primary" id="add-user-btn">+ Новый пользователь</button>' : ''}
-            ${activeTab === 'home' ? '<button class="btn btn-primary" id="edit-home-btn">Редактировать</button>' : ''}
-            ${activeTab === 'contacts'   ? '<button class="btn btn-primary" id="add-contact-btn">+ Добавить контакт</button>' : ''}
-            ${activeTab === 'motivation' ? '<div style="display:flex;gap:8px;"><button class="btn btn-outline" id="review-motiv-btn">Проверить результаты</button><button class="btn btn-primary" id="add-motiv-btn">+ Новый план</button></div>' : ''}
-          </div>
-          <div style="display:flex;gap:0;border-bottom:1px solid #e5e7eb;margin-bottom:24px;">
-            ${tabBtn('employees', 'Сотрудники')}
-            ${tabBtn('departments', 'Отделы')}
-            ${tabBtn('access', 'Доступы')}
-            ${tabBtn('rates', 'Ставки')}
-            ${isSuperAdmin() ? tabBtn('users', 'Пользователи') : ''}
-            ${tabBtn('home', 'Главная')}
-            ${tabBtn('contacts', 'Контакты')}
-            ${tabBtn('motivation', 'Мотивация')}
-          </div>
-          <div id="tab-content"></div>
-        </section>
-      </div>
-    `;
-
-    wrap.querySelector('#back-site')!.addEventListener('click', () => navigate('/'));
-
-    wrap.querySelector('#add-btn')?.addEventListener('click', () => {
-      if (activeTab === 'employees')        navigate('/admin/employee/new');
-      else if (activeTab === 'departments') navigate('/admin/department/new');
-      else if (activeTab === 'access')      navigate('/admin/access/new');
-      else                                  navigate('/admin/rates/new');
-    });
-
-    wrap.querySelector('#add-user-btn')?.addEventListener('click', () => navigate('/admin/users/new'));
-    wrap.querySelector('#edit-home-btn')?.addEventListener('click', () => navigate('/admin/home'));
-    wrap.querySelector('#add-contact-btn')?.addEventListener('click', () => navigate('/admin/contacts/new'));
-    wrap.querySelector('#add-motiv-btn')?.addEventListener('click', () => navigate('/admin/motivation/new'));
-    wrap.querySelector('#review-motiv-btn')?.addEventListener('click', () => navigate('/admin/motivation/review'));
-
-    wrap.querySelectorAll<HTMLButtonElement>('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        activeTab = btn.dataset['tab'] as Tab;
-        rebuild();
-      });
-    });
-
-    const tabContent = wrap.querySelector('#tab-content')!;
     if (activeTab === 'employees') {
-      tabContent.appendChild(buildEmployeesTable());
+      wrap.appendChild(pageHeader('Сотрудники',
+        addBtn('+ Добавить', () => navigate('/admin/employee/new')),
+      ));
+      wrap.appendChild(buildEmployeesTable());
+
     } else if (activeTab === 'departments') {
-      tabContent.appendChild(buildDepartmentsTable());
+      wrap.appendChild(pageHeader('Отделы',
+        addBtn('+ Добавить', () => navigate('/admin/department/new')),
+      ));
+      wrap.appendChild(buildDepartmentsTable());
+
     } else if (activeTab === 'access') {
-      tabContent.appendChild(buildAccessTable());
+      wrap.appendChild(pageHeader('Доступы',
+        addBtn('+ Добавить', () => navigate('/admin/access/new')),
+      ));
+      wrap.appendChild(buildAccessTable());
+
     } else if (activeTab === 'rates') {
-      tabContent.appendChild(buildRatesTable());
+      wrap.appendChild(pageHeader('Ставки',
+        addBtn('+ Добавить', () => navigate('/admin/rates/new')),
+      ));
+      wrap.appendChild(buildRatesTable());
+
     } else if (activeTab === 'users') {
-      tabContent.appendChild(buildUsersTableEl(rebuild));
+      wrap.appendChild(pageHeader('Пользователи',
+        addBtn('+ Новый пользователь', () => navigate('/admin/users/new')),
+      ));
+      wrap.appendChild(buildUsersTableEl(rebuild));
+
     } else if (activeTab === 'contacts') {
-      tabContent.appendChild(buildContactsTable());
+      wrap.appendChild(pageHeader('Контакты',
+        addBtn('+ Добавить контакт', () => navigate('/admin/contacts/new')),
+      ));
+      wrap.appendChild(buildContactsTable());
+
     } else if (activeTab === 'motivation') {
-      tabContent.appendChild(buildMotivationSection());
+      wrap.appendChild(pageHeader('Мотивация',
+        outlineBtn('Проверить результаты', () => navigate('/admin/motivation/review')),
+        addBtn('+ Новый план', () => navigate('/admin/motivation/new')),
+      ));
+      wrap.appendChild(buildMotivationSection());
+
     } else {
-      tabContent.innerHTML = `
+      // home
+      wrap.appendChild(pageHeader('Главная страница',
+        addBtn('Редактировать', () => navigate('/admin/home')),
+      ));
+      wrap.innerHTML += `
         <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:32px;text-align:center;">
           <div style="font-size:32px;margin-bottom:12px;">🏠</div>
           <div style="font-size:15px;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Главная страница</div>
-          <div style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;">Редактируйте заголовок, карусель фото и блоки главной страницы</div>
+          <div style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;">Редактируйте заголовок и блоки главной страницы</div>
           <button class="btn btn-primary" id="goto-home-edit">Редактировать главную</button>
         </div>
       `;
-      tabContent.querySelector('#goto-home-edit')?.addEventListener('click', () => navigate('/admin/home'));
+      wrap.querySelector('#goto-home-edit')?.addEventListener('click', () => navigate('/admin/home'));
     }
 
     return wrap;
   }
+
+  // ── Table builders (unchanged logic) ─────────────────────────────────────
 
   function buildEmployeesTable(): HTMLElement {
     const employees = getEmployees();
@@ -119,55 +231,34 @@ export function renderAdmin(): HTMLElement {
       : employees.map(emp => {
           const deptName = emp.departmentId ? (getDepartment(emp.departmentId)?.name ?? '—') : '—';
           return `
-            <tr class="admin-row" data-id="${emp.id}">
+            <tr>
               <td style="padding:13px 16px;font-weight:500;">${emp.name}</td>
               <td style="padding:13px 16px;color:#6b7280;">${emp.position}</td>
               <td style="padding:13px 16px;color:#6b7280;">${deptName}</td>
               <td style="padding:13px 16px;color:#6b7280;">${emp.pizzeria || '—'}</td>
               <td style="padding:13px 16px;">
                 <div style="display:flex;gap:8px;">
-                  <button class="btn-edit" data-id="${emp.id}" style="font-size:12px;padding:5px 12px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;cursor:pointer;color:#374151;">Изменить</button>
-                  <button class="btn-delete" data-id="${emp.id}" style="font-size:12px;padding:5px 12px;border:1px solid #fecaca;border-radius:6px;background:#fff;cursor:pointer;color:#ef4444;">Удалить</button>
+                  <button class="btn-edit" data-id="${emp.id}" style="font-size:12px;padding:5px 12px;border:1px solid #e5e7eb;border-radius:6px;background:var(--bg-card);cursor:pointer;color:#374151;">Изменить</button>
+                  <button class="btn-delete" data-id="${emp.id}" style="font-size:12px;padding:5px 12px;border:1px solid #fecaca;border-radius:6px;background:var(--bg-card);cursor:pointer;color:#ef4444;">Удалить</button>
                 </div>
               </td>
-            </tr>
-          `;
+            </tr>`;
         }).join('');
 
-    el.innerHTML = `
-      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-        <table style="width:100%;border-collapse:collapse;">
-          <thead>
-            <tr style="border-bottom:1px solid #e5e7eb;background:#f9fafb;">
-              ${['ФИО','Должность','Отдел','Пиццерия','Действия'].map(h =>
-                `<th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;letter-spacing:0.08em;color:#6b7280;text-transform:uppercase;">${h}</th>`
-              ).join('')}
-            </tr>
-          </thead>
-          <tbody>${rowsHtml}</tbody>
-        </table>
-      </div>
-    `;
+    el.innerHTML = adminTable(['ФИО','Должность','Отдел','Пиццерия','Действия'], rowsHtml);
 
     el.querySelectorAll<HTMLButtonElement>('.btn-edit').forEach(btn => {
-      btn.addEventListener('mouseenter', () => { btn.style.background = '#f9fafb'; });
-      btn.addEventListener('mouseleave', () => { btn.style.background = '#fff'; });
       btn.addEventListener('click', () => navigate(`/admin/employee/${btn.dataset['id']}`));
     });
-
     el.querySelectorAll<HTMLButtonElement>('.btn-delete').forEach(btn => {
-      btn.addEventListener('mouseenter', () => { btn.style.background = '#fef2f2'; });
-      btn.addEventListener('mouseleave', () => { btn.style.background = '#fff'; });
       btn.addEventListener('click', () => {
         const emp = getEmployee(btn.dataset['id']!);
-        if (!emp) return;
-        if (confirm(`Удалить сотрудника "${emp.name}"?`)) {
+        if (emp && confirm(`Удалить сотрудника "${emp.name}"?`)) {
           deleteEmployee(btn.dataset['id']!);
           rebuild();
         }
       });
     });
-
     return el;
   }
 
@@ -179,10 +270,10 @@ export function renderAdmin(): HTMLElement {
     const rowsHtml = departments.length === 0
       ? `<tr><td colspan="4" style="text-align:center;padding:40px;color:#9ca3af;font-size:14px;">Отделов нет</td></tr>`
       : departments.map(dept => {
-          const leaderName  = dept.leaderIds.length > 0
+          const leaderName = dept.leaderIds.length > 0
             ? dept.leaderIds.map(lid => employees.find(e => e.id === lid)?.name ?? '—').join(', ')
             : '—';
-          const parentName  = dept.parentDepartmentId ? (getDepartment(dept.parentDepartmentId)?.name ?? '—') : 'Корневой';
+          const parentName = dept.parentDepartmentId ? (getDepartment(dept.parentDepartmentId)?.name ?? '—') : 'Корневой';
           return `
             <tr>
               <td style="padding:13px 16px;font-weight:500;">${dept.name}</td>
@@ -190,48 +281,27 @@ export function renderAdmin(): HTMLElement {
               <td style="padding:13px 16px;color:#6b7280;">${parentName}</td>
               <td style="padding:13px 16px;">
                 <div style="display:flex;gap:8px;">
-                  <button class="dept-edit" data-id="${dept.id}" style="font-size:12px;padding:5px 12px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;cursor:pointer;color:#374151;">Изменить</button>
-                  <button class="dept-delete" data-id="${dept.id}" style="font-size:12px;padding:5px 12px;border:1px solid #fecaca;border-radius:6px;background:#fff;cursor:pointer;color:#ef4444;">Удалить</button>
+                  <button class="dept-edit" data-id="${dept.id}" style="font-size:12px;padding:5px 12px;border:1px solid #e5e7eb;border-radius:6px;background:var(--bg-card);cursor:pointer;color:#374151;">Изменить</button>
+                  <button class="dept-delete" data-id="${dept.id}" style="font-size:12px;padding:5px 12px;border:1px solid #fecaca;border-radius:6px;background:var(--bg-card);cursor:pointer;color:#ef4444;">Удалить</button>
                 </div>
               </td>
-            </tr>
-          `;
+            </tr>`;
         }).join('');
 
-    el.innerHTML = `
-      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-        <table style="width:100%;border-collapse:collapse;">
-          <thead>
-            <tr style="border-bottom:1px solid #e5e7eb;background:#f9fafb;">
-              ${['Название','Руководитель','Родительский отдел','Действия'].map(h =>
-                `<th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;letter-spacing:0.08em;color:#6b7280;text-transform:uppercase;">${h}</th>`
-              ).join('')}
-            </tr>
-          </thead>
-          <tbody>${rowsHtml}</tbody>
-        </table>
-      </div>
-    `;
+    el.innerHTML = adminTable(['Название','Руководитель','Родительский отдел','Действия'], rowsHtml);
 
     el.querySelectorAll<HTMLButtonElement>('.dept-edit').forEach(btn => {
-      btn.addEventListener('mouseenter', () => { btn.style.background = '#f9fafb'; });
-      btn.addEventListener('mouseleave', () => { btn.style.background = '#fff'; });
       btn.addEventListener('click', () => navigate(`/admin/department/${btn.dataset['id']}`));
     });
-
     el.querySelectorAll<HTMLButtonElement>('.dept-delete').forEach(btn => {
-      btn.addEventListener('mouseenter', () => { btn.style.background = '#fef2f2'; });
-      btn.addEventListener('mouseleave', () => { btn.style.background = '#fff'; });
       btn.addEventListener('click', () => {
         const dept = getDepartment(btn.dataset['id']!);
-        if (!dept) return;
-        if (confirm(`Удалить отдел "${dept.name}"? Сотрудники отдела станут без отдела.`)) {
+        if (dept && confirm(`Удалить отдел "${dept.name}"? Сотрудники станут без отдела.`)) {
           deleteDepartment(btn.dataset['id']!);
           rebuild();
         }
       });
     });
-
     return el;
   }
 
@@ -252,37 +322,18 @@ export function renderAdmin(): HTMLElement {
             <td style="padding:13px 16px;color:#9ca3af;font-size:13px;letter-spacing:0.1em;">••••••••</td>
             <td style="padding:13px 16px;">
               <div style="display:flex;gap:8px;">
-                <button class="acc-edit" data-id="${entry.id}" style="font-size:12px;padding:5px 12px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;cursor:pointer;color:#374151;">Изменить</button>
-                <button class="acc-delete" data-id="${entry.id}" data-name="${entry.serviceName}" style="font-size:12px;padding:5px 12px;border:1px solid #fecaca;border-radius:6px;background:#fff;cursor:pointer;color:#ef4444;">Удалить</button>
+                <button class="acc-edit" data-id="${entry.id}" style="font-size:12px;padding:5px 12px;border:1px solid #e5e7eb;border-radius:6px;background:var(--bg-card);cursor:pointer;color:#374151;">Изменить</button>
+                <button class="acc-delete" data-id="${entry.id}" data-name="${entry.serviceName}" style="font-size:12px;padding:5px 12px;border:1px solid #fecaca;border-radius:6px;background:var(--bg-card);cursor:pointer;color:#ef4444;">Удалить</button>
               </div>
             </td>
-          </tr>
-        `).join('');
+          </tr>`).join('');
 
-    el.innerHTML = `
-      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-        <table style="width:100%;border-collapse:collapse;">
-          <thead>
-            <tr style="border-bottom:1px solid #e5e7eb;background:#f9fafb;">
-              ${['Сервис','Пиццерия','Логин','Пароль','Действия'].map(h =>
-                `<th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;letter-spacing:0.08em;color:#6b7280;text-transform:uppercase;">${h}</th>`
-              ).join('')}
-            </tr>
-          </thead>
-          <tbody>${rowsHtml}</tbody>
-        </table>
-      </div>
-    `;
+    el.innerHTML = adminTable(['Сервис','Пиццерия','Логин','Пароль','Действия'], rowsHtml);
 
     el.querySelectorAll<HTMLButtonElement>('.acc-edit').forEach(btn => {
-      btn.addEventListener('mouseenter', () => { btn.style.background = '#f9fafb'; });
-      btn.addEventListener('mouseleave', () => { btn.style.background = '#fff'; });
       btn.addEventListener('click', () => navigate(`/admin/access/${btn.dataset['id']}`));
     });
-
     el.querySelectorAll<HTMLButtonElement>('.acc-delete').forEach(btn => {
-      btn.addEventListener('mouseenter', () => { btn.style.background = '#fef2f2'; });
-      btn.addEventListener('mouseleave', () => { btn.style.background = '#fff'; });
       btn.addEventListener('click', () => {
         if (confirm(`Удалить доступ "${btn.dataset['name']}"?`)) {
           deleteAccessEntry(btn.dataset['id']!);
@@ -290,7 +341,6 @@ export function renderAdmin(): HTMLElement {
         }
       });
     });
-
     return el;
   }
 
@@ -309,38 +359,19 @@ export function renderAdmin(): HTMLElement {
               <td style="padding:13px 16px;color:#9ca3af;font-size:13px;">${updDate}</td>
               <td style="padding:13px 16px;">
                 <div style="display:flex;gap:8px;">
-                  <button class="rate-edit" data-id="${doc.id}" style="font-size:12px;padding:5px 12px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;cursor:pointer;color:#374151;">Изменить</button>
-                  <button class="rate-delete" data-id="${doc.id}" data-name="${doc.pizzeria}" style="font-size:12px;padding:5px 12px;border:1px solid #fecaca;border-radius:6px;background:#fff;cursor:pointer;color:#ef4444;">Удалить</button>
+                  <button class="rate-edit" data-id="${doc.id}" style="font-size:12px;padding:5px 12px;border:1px solid #e5e7eb;border-radius:6px;background:var(--bg-card);cursor:pointer;color:#374151;">Изменить</button>
+                  <button class="rate-delete" data-id="${doc.id}" data-name="${doc.pizzeria}" style="font-size:12px;padding:5px 12px;border:1px solid #fecaca;border-radius:6px;background:var(--bg-card);cursor:pointer;color:#ef4444;">Удалить</button>
                 </div>
               </td>
-            </tr>
-          `;
+            </tr>`;
         }).join('');
 
-    el.innerHTML = `
-      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-        <table style="width:100%;border-collapse:collapse;">
-          <thead>
-            <tr style="border-bottom:1px solid #e5e7eb;background:#f9fafb;">
-              ${['Пиццерия','Заголовок','Обновлено','Действия'].map(h =>
-                `<th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;letter-spacing:0.08em;color:#6b7280;text-transform:uppercase;">${h}</th>`
-              ).join('')}
-            </tr>
-          </thead>
-          <tbody>${rowsHtml}</tbody>
-        </table>
-      </div>
-    `;
+    el.innerHTML = adminTable(['Пиццерия','Заголовок','Обновлено','Действия'], rowsHtml);
 
     el.querySelectorAll<HTMLButtonElement>('.rate-edit').forEach(btn => {
-      btn.addEventListener('mouseenter', () => { btn.style.background = '#f9fafb'; });
-      btn.addEventListener('mouseleave', () => { btn.style.background = '#fff'; });
       btn.addEventListener('click', () => navigate(`/admin/rates/${btn.dataset['id']}`));
     });
-
     el.querySelectorAll<HTMLButtonElement>('.rate-delete').forEach(btn => {
-      btn.addEventListener('mouseenter', () => { btn.style.background = '#fef2f2'; });
-      btn.addEventListener('mouseleave', () => { btn.style.background = '#fff'; });
       btn.addEventListener('click', () => {
         if (confirm(`Удалить документ "${btn.dataset['name']}"?`)) {
           deleteRateDocument(btn.dataset['id']!);
@@ -348,7 +379,6 @@ export function renderAdmin(): HTMLElement {
         }
       });
     });
-
     return el;
   }
 
@@ -366,36 +396,18 @@ export function renderAdmin(): HTMLElement {
             <td style="padding:13px 16px;color:#6b7280;">${c.phone || '—'}</td>
             <td style="padding:13px 16px;">
               <div style="display:flex;gap:8px;">
-                <button class="cnt-edit" data-id="${c.id}" style="font-size:12px;padding:5px 12px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;cursor:pointer;color:#374151;">Изменить</button>
-                <button class="cnt-delete" data-id="${c.id}" data-name="${c.name}" style="font-size:12px;padding:5px 12px;border:1px solid #fecaca;border-radius:6px;background:#fff;cursor:pointer;color:#ef4444;">Удалить</button>
+                <button class="cnt-edit" data-id="${c.id}" style="font-size:12px;padding:5px 12px;border:1px solid #e5e7eb;border-radius:6px;background:var(--bg-card);cursor:pointer;color:#374151;">Изменить</button>
+                <button class="cnt-delete" data-id="${c.id}" data-name="${c.name}" style="font-size:12px;padding:5px 12px;border:1px solid #fecaca;border-radius:6px;background:var(--bg-card);cursor:pointer;color:#ef4444;">Удалить</button>
               </div>
             </td>
           </tr>`).join('');
 
-    el.innerHTML = `
-      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-        <table style="width:100%;border-collapse:collapse;">
-          <thead>
-            <tr style="border-bottom:1px solid #e5e7eb;background:#f9fafb;">
-              ${['Имя','Должность','Пиццерии','Телефон','Действия'].map(h =>
-                `<th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;letter-spacing:0.08em;color:#6b7280;text-transform:uppercase;">${h}</th>`
-              ).join('')}
-            </tr>
-          </thead>
-          <tbody>${rowsHtml}</tbody>
-        </table>
-      </div>
-    `;
+    el.innerHTML = adminTable(['Имя','Должность','Пиццерии','Телефон','Действия'], rowsHtml);
 
     el.querySelectorAll<HTMLButtonElement>('.cnt-edit').forEach(btn => {
-      btn.addEventListener('mouseenter', () => { btn.style.background = '#f9fafb'; });
-      btn.addEventListener('mouseleave', () => { btn.style.background = '#fff'; });
       btn.addEventListener('click', () => navigate(`/admin/contacts/${btn.dataset['id']}`));
     });
-
     el.querySelectorAll<HTMLButtonElement>('.cnt-delete').forEach(btn => {
-      btn.addEventListener('mouseenter', () => { btn.style.background = '#fef2f2'; });
-      btn.addEventListener('mouseleave', () => { btn.style.background = '#fff'; });
       btn.addEventListener('click', () => {
         if (confirm(`Удалить контакт "${btn.dataset['name']}"?`)) {
           saveContacts(getContacts().filter(c => c.id !== btn.dataset['id']));
@@ -403,7 +415,6 @@ export function renderAdmin(): HTMLElement {
         }
       });
     });
-
     return el;
   }
 
@@ -411,7 +422,6 @@ export function renderAdmin(): HTMLElement {
     const el = document.createElement('div');
     el.style.cssText = 'display:flex;flex-direction:column;gap:20px;';
 
-    // ── Metrics library ──
     const metrics = getMetrics();
 
     const metricRows = metrics.map(m => `
@@ -422,10 +432,9 @@ export function renderAdmin(): HTMLElement {
         <td style="padding:11px 16px;color:#6b7280;">${m.unit ?? '—'}</td>
         <td style="padding:11px 16px;">
           <button class="metric-del" data-id="${m.id}" data-name="${m.name}"
-            style="font-size:12px;padding:5px 12px;border:1px solid #fecaca;border-radius:6px;background:#fff;cursor:pointer;color:#ef4444;">Удалить</button>
+            style="font-size:12px;padding:5px 12px;border:1px solid #fecaca;border-radius:6px;background:var(--bg-card);cursor:pointer;color:#ef4444;">Удалить</button>
         </td>
-      </tr>
-    `).join('');
+      </tr>`).join('');
 
     const metricsCard = document.createElement('div');
     metricsCard.innerHTML = `
@@ -443,7 +452,6 @@ export function renderAdmin(): HTMLElement {
           </thead>
           <tbody>${metricRows || '<tr><td colspan="5" style="text-align:center;padding:30px;color:#9ca3af;font-size:14px;">Показателей нет</td></tr>'}</tbody>
         </table>
-        <!-- Добавить показатель -->
         <div style="padding:16px 20px;border-top:1px solid var(--border);background:var(--bg-secondary);">
           <div style="display:grid;grid-template-columns:1fr 120px 120px 100px auto;gap:8px;align-items:end;">
             <div>
@@ -489,34 +497,32 @@ export function renderAdmin(): HTMLElement {
       const block     = (metricsCard.querySelector<HTMLSelectElement>('#nm-block')!).value as 'ratings' | 'profit';
       const direction = (metricsCard.querySelector<HTMLSelectElement>('#nm-dir')!).value as 'higher' | 'lower';
       const unit      = (metricsCard.querySelector<HTMLInputElement>('#nm-unit')!).value.trim() || undefined;
-      const newMetrics = [...getMetrics(), { id: Math.random().toString(36).slice(2, 9), name, block, direction, unit }];
-      saveMetrics(newMetrics);
+      saveMetrics([...getMetrics(), { id: Math.random().toString(36).slice(2, 9), name, block, direction, unit }]);
       rebuild();
     });
 
     el.appendChild(metricsCard);
 
-    // ── Plans ──
+    // Plans table
     const plans = getPlans();
 
     const planRows = plans.length === 0
       ? `<tr><td colspan="5" style="text-align:center;padding:40px;color:#9ca3af;font-size:14px;">Планов нет</td></tr>`
       : plans.map(p => {
-          const monthLabel = new Date(p.month + '-01').toLocaleDateString('ru-RU', { year: 'numeric', month: 'long' });
+          const mlabel = new Date(p.month + '-01').toLocaleDateString('ru-RU', { year: 'numeric', month: 'long' });
           return `
             <tr>
               <td style="padding:13px 16px;font-weight:500;">${p.pizzeria}</td>
-              <td style="padding:13px 16px;color:#6b7280;">${monthLabel}</td>
+              <td style="padding:13px 16px;color:#6b7280;">${mlabel}</td>
               <td style="padding:13px 16px;color:#6b7280;">${p.bonusFund.toLocaleString('ru-RU')} ₽</td>
               <td style="padding:13px 16px;color:#f97316;">${p.wowFund.toLocaleString('ru-RU')} ₽</td>
               <td style="padding:13px 16px;">
                 <div style="display:flex;gap:8px;">
-                  <button class="plan-edit" data-id="${p.id}" style="font-size:12px;padding:5px 12px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;cursor:pointer;color:#374151;">Изменить</button>
-                  <button class="plan-del"  data-id="${p.id}" data-name="${p.pizzeria} ${p.month}" style="font-size:12px;padding:5px 12px;border:1px solid #fecaca;border-radius:6px;background:#fff;cursor:pointer;color:#ef4444;">Удалить</button>
+                  <button class="plan-edit" data-id="${p.id}" style="font-size:12px;padding:5px 12px;border:1px solid #e5e7eb;border-radius:6px;background:var(--bg-card);cursor:pointer;color:#374151;">Изменить</button>
+                  <button class="plan-del" data-id="${p.id}" data-name="${p.pizzeria} ${p.month}" style="font-size:12px;padding:5px 12px;border:1px solid #fecaca;border-radius:6px;background:var(--bg-card);cursor:pointer;color:#ef4444;">Удалить</button>
                 </div>
               </td>
-            </tr>
-          `;
+            </tr>`;
         }).join('');
 
     const plansCard = document.createElement('div');
@@ -541,7 +547,6 @@ export function renderAdmin(): HTMLElement {
     plansCard.querySelectorAll<HTMLButtonElement>('.plan-edit').forEach(btn => {
       btn.addEventListener('click', () => navigate(`/admin/motivation/${btn.dataset['id']}`));
     });
-
     plansCard.querySelectorAll<HTMLButtonElement>('.plan-del').forEach(btn => {
       btn.addEventListener('click', () => {
         if (confirm(`Удалить план "${btn.dataset['name']}"?`)) {
@@ -555,6 +560,25 @@ export function renderAdmin(): HTMLElement {
     return el;
   }
 
-  page.appendChild(buildContent());
+  // ── Shared table helper ───────────────────────────────────────────────────
+  function adminTable(headers: string[], rowsHtml: string): string {
+    return `
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border);background:var(--bg-secondary);">
+              ${headers.map(h => `<th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;letter-spacing:0.08em;color:#6b7280;text-transform:uppercase;">${h}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>`;
+  }
+
+  // ── Initial render ────────────────────────────────────────────────────────
+  layout.appendChild(buildSidebar());
+  layout.appendChild(mainEl);
+  contentEl.appendChild(buildTabContent());
+  page.appendChild(layout);
   return page;
 }
