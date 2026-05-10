@@ -23,6 +23,7 @@ function guardRoute(path: string): string | null {
   if (PUBLIC_PATHS.has(path)) return null;
   if (!isAuthenticated()) return '/login';
   if (path.startsWith('/admin') && !isManagement()) return '/';
+  if (path === '/schedule' && isManagement()) return '/schedule/overview';
   if (path === '/schedule/overview' && !isManagement()) return '/schedule';
   return null;
 }

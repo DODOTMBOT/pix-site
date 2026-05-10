@@ -16,6 +16,11 @@ export function renderSchedule(): HTMLElement {
   const page = document.createElement('div');
   page.className = 'schedule-page page-enter';
 
+  if (isManagement()) {
+    navigate('/schedule/overview');
+    return page;
+  }
+
   const rawUser = getUser();
   if (!rawUser) {
     page.innerHTML = `<p style="padding:40px;color:var(--text-muted)">Не авторизован</p>`;

@@ -6,7 +6,7 @@ const NAV_LINKS = [
   { label: 'Регламенты', path: '/regulations' },
   { label: 'Инструкции', path: '/instructions' },
   { label: 'Ставки',     path: '/rates' },
-  { label: 'График',     path: '/schedule' },
+  { label: 'График',     path: '/schedule', managementPath: '/schedule/overview' },
   { label: 'Структура',  path: '/org' },
   { label: 'Доступы',    path: '/access' },
   { label: 'Контакты',   path: '/contacts' },
@@ -19,9 +19,12 @@ export function renderHeader(): HTMLElement {
     const user = getUser();
     const curPath = window.location.pathname;
 
-    const navHtml = NAV_LINKS.map(l =>
-      `<button class="header-nav-link${curPath === l.path ? ' active' : ''}" data-path="${l.path}">${l.label}</button>`
-    ).join('');
+    const mgmt = isManagement();
+    const navHtml = NAV_LINKS.map(l => {
+      const path   = (mgmt && l.managementPath) ? l.managementPath : l.path;
+      const active = curPath === path || curPath === l.path;
+      return `<button class="header-nav-link${active ? ' active' : ''}" data-path="${path}">${l.label}</button>`;
+    }).join('');
 
     const userArea = user
       ? `
