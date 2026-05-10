@@ -1,9 +1,9 @@
 import { navigate } from '../router';
-import { getEmployees, deleteEmployee, getEmployee, getDepartments, getDepartment, deleteDepartment, getAccessEntries, deleteAccessEntry, getRateDocuments, deleteRateDocument } from '../services/storage';
+import { getEmployees, deleteEmployee, getEmployee, getDepartments, getDepartment, deleteDepartment, getAccessEntries, deleteAccessEntry, getRateDocuments, deleteRateDocument, getContacts, saveContacts } from '../services/storage';
 import { isManagement, isSuperAdmin } from '../services/auth';
 import { buildUsersTableEl } from './admin-users';
 
-type Tab = 'employees' | 'departments' | 'access' | 'rates' | 'users' | 'home';
+type Tab = 'employees' | 'departments' | 'access' | 'rates' | 'users' | 'home' | 'contacts';
 
 export function renderAdmin(): HTMLElement {
   const page = document.createElement('div');
@@ -29,7 +29,7 @@ export function renderAdmin(): HTMLElement {
     `;
 
     const noAddBtn = activeTab === 'users' || activeTab === 'home';
-    const showAddBtn = !noAddBtn;
+    const showAddBtn = !noAddBtn && activeTab !== 'contacts';
 
     wrap.innerHTML = `
       <div class="container">
@@ -40,6 +40,7 @@ export function renderAdmin(): HTMLElement {
             ${showAddBtn ? '<button class="btn btn-primary" id="add-btn">+ Добавить</button>' : ''}
             ${activeTab === 'users' ? '<button class="btn btn-primary" id="add-user-btn">+ Новый пользователь</button>' : ''}
             ${activeTab === 'home' ? '<button class="btn btn-primary" id="edit-home-btn">Редактировать</button>' : ''}
+            ${activeTab === 'contacts' ? '<button class="btn btn-primary" id="add-contact-btn">+ Добавить контакт</button>' : ''}
           </div>
           <div style="display:flex;gap:0;border-bottom:1px solid #e5e7eb;margin-bottom:24px;">
             ${tabBtn('employees', 'Сотрудники')}
@@ -48,6 +49,7 @@ export function renderAdmin(): HTMLElement {
             ${tabBtn('rates', 'Ставки')}
             ${isSuperAdmin() ? tabBtn('users', 'Пользователи') : ''}
             ${tabBtn('home', 'Главная')}
+            ${tabBtn('contacts', 'Контакты')}
           </div>
           <div id="tab-content"></div>
         </section>
@@ -65,6 +67,7 @@ export function renderAdmin(): HTMLElement {
 
     wrap.querySelector('#add-user-btn')?.addEventListener('click', () => navigate('/admin/users/new'));
     wrap.querySelector('#edit-home-btn')?.addEventListener('click', () => navigate('/admin/home'));
+    wrap.querySelector('#add-contact-btn')?.addEventListener('click', () => navigate('/admin/contacts/new'));
 
     wrap.querySelectorAll<HTMLButtonElement>('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -84,6 +87,8 @@ export function renderAdmin(): HTMLElement {
       tabContent.appendChild(buildRatesTable());
     } else if (activeTab === 'users') {
       tabContent.appendChild(buildUsersTableEl(rebuild));
+    } else if (activeTab === 'contacts') {
+      tabContent.appendChild(buildContactsTable());
     } else {
       tabContent.innerHTML = `
         <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:32px;text-align:center;">
@@ -333,6 +338,61 @@ export function renderAdmin(): HTMLElement {
       btn.addEventListener('click', () => {
         if (confirm(`Удалить документ "${btn.dataset['name']}"?`)) {
           deleteRateDocument(btn.dataset['id']!);
+          rebuild();
+        }
+      });
+    });
+
+    return el;
+  }
+
+  function buildContactsTable(): HTMLElement {
+    const contacts = getContacts();
+    const el = document.createElement('div');
+
+    const rowsHtml = contacts.length === 0
+      ? `<tr><td colspan="5" style="text-align:center;padding:40px;color:#9ca3af;font-size:14px;">Контактов нет</td></tr>`
+      : contacts.map(c => `
+          <tr>
+            <td style="padding:13px 16px;font-weight:500;">${c.name}</td>
+            <td style="padding:13px 16px;color:#6b7280;">${c.position || '—'}</td>
+            <td style="padding:13px 16px;color:#6b7280;">${c.pizzerias || '—'}</td>
+            <td style="padding:13px 16px;color:#6b7280;">${c.phone || '—'}</td>
+            <td style="padding:13px 16px;">
+              <div style="display:flex;gap:8px;">
+                <button class="cnt-edit" data-id="${c.id}" style="font-size:12px;padding:5px 12px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;cursor:pointer;color:#374151;">Изменить</button>
+                <button class="cnt-delete" data-id="${c.id}" data-name="${c.name}" style="font-size:12px;padding:5px 12px;border:1px solid #fecaca;border-radius:6px;background:#fff;cursor:pointer;color:#ef4444;">Удалить</button>
+              </div>
+            </td>
+          </tr>`).join('');
+
+    el.innerHTML = `
+      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:1px solid #e5e7eb;background:#f9fafb;">
+              ${['Имя','Должность','Пиццерии','Телефон','Действия'].map(h =>
+                `<th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;letter-spacing:0.08em;color:#6b7280;text-transform:uppercase;">${h}</th>`
+              ).join('')}
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    `;
+
+    el.querySelectorAll<HTMLButtonElement>('.cnt-edit').forEach(btn => {
+      btn.addEventListener('mouseenter', () => { btn.style.background = '#f9fafb'; });
+      btn.addEventListener('mouseleave', () => { btn.style.background = '#fff'; });
+      btn.addEventListener('click', () => navigate(`/admin/contacts/${btn.dataset['id']}`));
+    });
+
+    el.querySelectorAll<HTMLButtonElement>('.cnt-delete').forEach(btn => {
+      btn.addEventListener('mouseenter', () => { btn.style.background = '#fef2f2'; });
+      btn.addEventListener('mouseleave', () => { btn.style.background = '#fff'; });
+      btn.addEventListener('click', () => {
+        if (confirm(`Удалить контакт "${btn.dataset['name']}"?`)) {
+          saveContacts(getContacts().filter(c => c.id !== btn.dataset['id']));
           rebuild();
         }
       });

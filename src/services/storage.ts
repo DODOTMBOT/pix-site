@@ -24,6 +24,19 @@ export function saveHomeSettings(settings: HomeSettings): void {
   localStorage.setItem(HOME_KEY, JSON.stringify(settings));
 }
 
+// ─── Contacts ─────────────────────────────────────────────────────────────────
+
+const CONTACTS_KEY = 'pix_contacts';
+
+export function getContacts(): import('../types').Contact[] {
+  const raw = localStorage.getItem(CONTACTS_KEY);
+  return raw ? JSON.parse(raw) : [];
+}
+
+export function saveContacts(contacts: import('../types').Contact[]): void {
+  localStorage.setItem(CONTACTS_KEY, JSON.stringify(contacts));
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 const EMP_KEY    = 'pix_employees';

@@ -13,6 +13,7 @@ import { renderAdminRates } from './pages/admin-rates';
 import { renderLogin } from './pages/login';
 import { renderAdminUsersForm } from './pages/admin-users';
 import { renderAdminHome } from './pages/admin-home';
+import { renderAdminContact } from './pages/admin-contact';
 import { renderSchedule } from './pages/schedule';
 import { renderScheduleOverview } from './pages/schedule-overview';
 import { isAuthenticated, isManagement } from './services/auth';
@@ -47,6 +48,7 @@ function matchRoute(path: string): () => HTMLElement {
   if (path === '/admin/rates/new')      return () => renderAdminRates();
   if (path === '/admin/users/new')      return () => renderAdminUsersForm();
   if (path === '/admin/home')           return renderAdminHome;
+  if (path === '/admin/contacts/new')   return () => renderAdminContact();
 
   const empMatch  = path.match(/^\/admin\/employee\/(.+)$/);
   if (empMatch)  return () => renderAdminEmployee(empMatch[1]);
@@ -62,6 +64,9 @@ function matchRoute(path: string): () => HTMLElement {
 
   const userMatch = path.match(/^\/admin\/users\/(.+)$/);
   if (userMatch) return () => renderAdminUsersForm(userMatch[1]);
+
+  const contactMatch = path.match(/^\/admin\/contacts\/(.+)$/);
+  if (contactMatch) return () => renderAdminContact(contactMatch[1]);
 
   return renderHome;
 }

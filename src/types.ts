@@ -81,6 +81,17 @@ export interface HomeSettings {
   blocks: HomeBlock[];
 }
 
+export interface Contact {
+  id: string;
+  name: string;
+  position: string;
+  pizzerias: string;
+  phone: string;
+  email: string;
+  extraFields: { label: string; value: string }[];
+  avatar?: string;
+}
+
 export interface Employee {
   id: string;
   name: string;
