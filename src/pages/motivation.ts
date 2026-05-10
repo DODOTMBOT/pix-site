@@ -1,5 +1,5 @@
 import { getUser, isManagement } from '../services/auth';
-import { getPlanByPizzeriaMonth, getMetrics, savePlan } from '../services/storage';
+import { getPlanByPizzeriaMonth, getPlans, getMetrics, savePlan } from '../services/storage';
 import { calcMotivation } from '../services/motivationCalc';
 import { navigate } from '../router';
 import type { MotivationPlan } from '../types';
@@ -25,18 +25,45 @@ export function renderMotivation(): HTMLElement {
   const user = getUser();
   if (!user) { navigate('/login'); return page; }
 
-  const pizzerias = user.pizzerias ?? [];
+  const pizzerias    = user.pizzerias ?? [];
+  const todayMonth   = new Date().toISOString().slice(0, 7);
 
   let selectedPizzeria = pizzerias[0] ?? '';
-  const currentMonth   = new Date().toISOString().slice(0, 7);
+  let selectedMonth    = todayMonth;
+  let alertDismissed   = false;
 
-  function build(): void {
-    page.replaceChildren(renderContent(selectedPizzeria));
+  function getAvailableMonths(pizzeria: string): string[] {
+    const all = getPlans().filter(p =>
+      pizzerias.some(piz => piz.trim().toLowerCase() === p.pizzeria.trim().toLowerCase()) &&
+      p.pizzeria.trim().toLowerCase() === pizzeria.trim().toLowerCase()
+    );
+    const months = [...new Set(all.map(p => p.month))].sort();
+    if (!months.includes(todayMonth)) months.push(todayMonth);
+    return months.sort();
   }
 
-  function renderContent(pizzeria: string): HTMLElement {
-    const metrics = getMetrics();
-    const plan    = pizzeria ? getPlanByPizzeriaMonth(pizzeria, currentMonth) : undefined;
+  function build(): void {
+    page.replaceChildren(renderContent());
+  }
+
+  function renderContent(): HTMLElement {
+    const metrics         = getMetrics();
+    const availableMonths = getAvailableMonths(selectedPizzeria);
+    const monthIdx        = availableMonths.indexOf(selectedMonth);
+    const effectiveIdx    = monthIdx >= 0 ? monthIdx : availableMonths.indexOf(todayMonth);
+    const activeMonth     = availableMonths[effectiveIdx >= 0 ? effectiveIdx : availableMonths.length - 1] ?? todayMonth;
+    if (activeMonth !== selectedMonth) selectedMonth = activeMonth;
+
+    const isFirst = availableMonths.indexOf(selectedMonth) === 0;
+    const isLast  = availableMonths.indexOf(selectedMonth) === availableMonths.length - 1;
+
+    const plan = selectedPizzeria ? getPlanByPizzeriaMonth(selectedPizzeria, selectedMonth) : undefined;
+
+    const futurePlans = alertDismissed
+      ? []
+      : availableMonths.filter(m => m > todayMonth && getPlans().some(p =>
+          p.month === m && pizzerias.some(piz => piz.trim().toLowerCase() === p.pizzeria.trim().toLowerCase())
+        ));
 
     const wrap = document.createElement('div');
     wrap.className = 'motivation-page';
@@ -44,33 +71,70 @@ export function renderMotivation(): HTMLElement {
     // ── Header ───────────────────────────────────────────────────────────────
     const pizzeriaSelect = pizzerias.length > 1
       ? `<select id="piz-select" style="padding:5px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg-input,var(--bg-primary));color:var(--text-primary);outline:none;">
-           ${pizzerias.map(p => `<option value="${p}" ${p === pizzeria ? 'selected' : ''}>${p}</option>`).join('')}
+           ${pizzerias.map(p => `<option value="${p}" ${p === selectedPizzeria ? 'selected' : ''}>${p}</option>`).join('')}
          </select>`
-      : `<span>📍 ${pizzeria || '—'}</span>`;
+      : `<span>📍 ${selectedPizzeria || '—'}</span>`;
 
     wrap.innerHTML = `
-      <div class="page-header" style="margin-bottom:24px;">
+      <div class="page-header" style="margin-bottom:20px;">
         <div class="page-label">МОЯ МОТИВАЦИЯ</div>
         <h1 style="font-size:28px;font-weight:700;letter-spacing:-0.02em;margin:4px 0 8px;">Система мотивации</h1>
         <div class="motivation-meta">
           ${pizzeriaSelect}
-          <span>📅 ${monthLabel(currentMonth)}</span>
         </div>
       </div>
     `;
 
     wrap.querySelector('#piz-select')?.addEventListener('change', e => {
       selectedPizzeria = (e.target as HTMLSelectElement).value;
+      selectedMonth    = todayMonth;
       build();
     });
 
+    // ── Future plans alert ────────────────────────────────────────────────────
+    if (futurePlans.length > 0) {
+      const alertEl = document.createElement('div');
+      alertEl.className = 'future-alert';
+      alertEl.innerHTML = `
+        <span>📅 Руководство уже настроило план на <strong>${futurePlans.map(m => monthLabel(m)).join(', ')}</strong></span>
+        <button class="future-alert-close" id="alert-close">✕</button>
+      `;
+      alertEl.querySelector('#alert-close')!.addEventListener('click', () => {
+        alertDismissed = true;
+        alertEl.remove();
+      });
+      wrap.appendChild(alertEl);
+    }
+
+    // ── Month nav ─────────────────────────────────────────────────────────────
+    const navEl = document.createElement('div');
+    navEl.className = 'week-nav';
+    navEl.style.cssText = 'margin-bottom:20px;';
+    navEl.innerHTML = `
+      <button class="btn btn-ghost" id="prev-month" ${isFirst ? 'disabled style="opacity:0.4;cursor:default;"' : ''}>← Пред.</button>
+      <span class="week-label">${monthLabel(selectedMonth)}</span>
+      <button class="btn btn-ghost" id="next-month" ${isLast ? 'disabled style="opacity:0.4;cursor:default;"' : ''}>След. →</button>
+    `;
+    navEl.querySelector('#prev-month')!.addEventListener('click', () => {
+      if (isFirst) return;
+      selectedMonth = availableMonths[availableMonths.indexOf(selectedMonth) - 1];
+      build();
+    });
+    navEl.querySelector('#next-month')!.addEventListener('click', () => {
+      if (isLast) return;
+      selectedMonth = availableMonths[availableMonths.indexOf(selectedMonth) + 1];
+      build();
+    });
+    wrap.appendChild(navEl);
+
+    // ── No plan ───────────────────────────────────────────────────────────────
     if (!plan) {
       const empty = document.createElement('div');
       empty.innerHTML = `
         <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:40px;text-align:center;">
           <div style="font-size:36px;margin-bottom:12px;">📋</div>
           <div style="font-size:15px;font-weight:600;color:var(--text-primary);margin-bottom:6px;">План не настроен</div>
-          <div style="font-size:13px;color:var(--text-secondary);">План на этот месяц ещё не настроен руководством</div>
+          <div style="font-size:13px;color:var(--text-secondary);">План на ${monthLabel(selectedMonth)} ещё не настроен руководством</div>
         </div>
       `;
       wrap.appendChild(empty);
@@ -80,11 +144,11 @@ export function renderMotivation(): HTMLElement {
     // ── Calc result ──────────────────────────────────────────────────────────
     const result = calcMotivation(plan, metrics);
 
-    // ── Fund cards ───────────────────────────────────────────────────────────
     const resultHtml = result.isReset
       ? '<span style="color:#dc2626;font-size:14px;font-weight:600;">Обнулён</span>'
       : `${fmt(result.totalAmount)} ₽`;
 
+    // ── Fund cards ───────────────────────────────────────────────────────────
     const fundsEl = document.createElement('div');
     fundsEl.className = 'funds-overview';
     fundsEl.innerHTML = `
@@ -98,7 +162,7 @@ export function renderMotivation(): HTMLElement {
       </div>
       <div class="fund-card result">
         <div class="fund-label">Текущий расчёт</div>
-        <div class="fund-amount" id="current-result">${resultHtml}</div>
+        <div class="fund-amount">${resultHtml}</div>
       </div>
     `;
     wrap.appendChild(fundsEl);
@@ -119,23 +183,25 @@ export function renderMotivation(): HTMLElement {
         const unit   = metric.unit ? ` ${metric.unit}` : '';
 
         let statusHtml = '';
-        if (t.wowFulfilled === true)  statusHtml = `<span class="status-wow">⭐ WOW!</span>`;
-        else if (t.fulfilled === true) statusHtml = `<span class="status-ok">✓ Выполнено</span>`;
+        if (t.wowFulfilled === true)   statusHtml = `<span class="status-wow">⭐ WOW!</span>`;
+        else if (t.fulfilled === true)  statusHtml = `<span class="status-ok">✓ Выполнено</span>`;
         else if (t.fulfilled === false) statusHtml = `<span class="status-fail">✗ Не выполнено</span>`;
-        else statusHtml = `<span class="status-pending">Ожидает проверки</span>`;
+        else                            statusHtml = `<span class="status-pending">Ожидает проверки</span>`;
 
         const targetStr = t.targetValue ? `${prefix} ${t.targetValue}${unit}` : '—';
         const wowStr    = t.wowValue    ? `${prefix} ${t.wowValue}${unit}`    : '—';
+
+        const isPast    = selectedMonth < todayMonth;
+        const inputEl   = isPast
+          ? `<span style="font-size:13px;color:var(--text-primary);">${t.result || '—'}</span>`
+          : `<input type="text" class="result-input" data-mid="${metric.id}" value="${t.result ?? ''}" placeholder="введите результат">`;
 
         return `
           <tr>
             <td style="font-weight:500;">${metric.name}${unit ? ` (${metric.unit})` : ''}</td>
             <td class="target-cell">${targetStr}</td>
             <td class="wow-cell">${wowStr}</td>
-            <td>
-              <input type="text" class="result-input" data-mid="${metric.id}"
-                value="${t.result ?? ''}" placeholder="введите результат">
-            </td>
+            <td>${inputEl}</td>
             <td class="status-cell">${statusHtml}</td>
           </tr>
         `;
@@ -187,34 +253,36 @@ export function renderMotivation(): HTMLElement {
       wrap.appendChild(resetEl);
     }
 
-    // ── Footer ───────────────────────────────────────────────────────────────
-    const footer = document.createElement('div');
-    footer.className = 'motivation-footer';
-    footer.innerHTML = `
-      <button class="btn btn-primary" id="save-results">Сохранить результаты</button>
-      <div class="footer-note">После сохранения ТУ проверит и поставит статус выполнения</div>
-      <span id="save-ok" style="font-size:13px;color:#16a34a;display:none;">Сохранено ✓</span>
-    `;
+    // ── Footer (only for current/future months) ───────────────────────────────
+    const isPastMonth = selectedMonth < todayMonth;
+    if (!isPastMonth) {
+      const footer = document.createElement('div');
+      footer.className = 'motivation-footer';
+      footer.innerHTML = `
+        <button class="btn btn-primary" id="save-results">Сохранить результаты</button>
+        <div class="footer-note">После сохранения ТУ проверит и поставит статус выполнения</div>
+        <span id="save-ok" style="font-size:13px;color:#16a34a;display:none;">Сохранено ✓</span>
+      `;
+      footer.querySelector('#save-results')!.addEventListener('click', () => {
+        const inputs = wrap.querySelectorAll<HTMLInputElement>('.result-input');
+        const updated: MotivationPlan = {
+          ...plan!,
+          targets: plan!.targets.map(t => {
+            const input = Array.from(inputs).find(el => el.dataset['mid'] === t.metricId);
+            return input ? { ...t, result: input.value } : t;
+          }),
+        };
+        savePlan(updated);
+        const ok = footer.querySelector<HTMLElement>('#save-ok')!;
+        ok.style.display = 'inline';
+        setTimeout(() => { ok.style.display = 'none'; }, 2500);
+      });
+      wrap.appendChild(footer);
+    }
 
-    footer.querySelector('#save-results')!.addEventListener('click', () => {
-      const inputs = wrap.querySelectorAll<HTMLInputElement>('.result-input');
-      const updated: MotivationPlan = {
-        ...plan!,
-        targets: plan!.targets.map(t => {
-          const input = Array.from(inputs).find(el => el.dataset['mid'] === t.metricId);
-          return input ? { ...t, result: input.value } : t;
-        }),
-      };
-      savePlan(updated);
-      const ok = footer.querySelector<HTMLElement>('#save-ok')!;
-      ok.style.display = 'inline';
-      setTimeout(() => { ok.style.display = 'none'; }, 2500);
-    });
-
-    wrap.appendChild(footer);
     return wrap;
   }
 
-  page.appendChild(renderContent(selectedPizzeria));
+  page.appendChild(renderContent());
   return page;
 }
