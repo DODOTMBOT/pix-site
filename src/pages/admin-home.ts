@@ -26,6 +26,10 @@ export function renderAdminHome(): HTMLElement {
   const loaded = getHomeSettings();
   let blocks: HomeBlock[] = loaded.blocks.map(b => ({ ...b }));
 
+  // JS-объект для хранения фото блоков (ключ — block.id)
+  const blockPhotos: Record<string, string> = {};
+  loaded.blocks.forEach(b => { if (b.photo) blockPhotos[b.id] = b.photo; });
+
   // ── Collect current values from DOM + state ──────────────────────────────
 
   function collectSettings(): HomeSettings {
@@ -34,9 +38,10 @@ export function renderAdminHome(): HTMLElement {
 
     const collectedBlocks: HomeBlock[] = [];
     page.querySelectorAll<HTMLElement>('.block-form-item').forEach(item => {
+      const id = item.dataset['id'] ?? uid();
       collectedBlocks.push({
-        id:          item.dataset['id'] ?? uid(),
-        photo:       item.dataset['photo'] || undefined,
+        id,
+        photo:       blockPhotos[id] || undefined,
         title:       item.querySelector<HTMLInputElement>('.block-title')?.value  ?? '',
         description: item.querySelector<HTMLInputElement>('.block-desc')?.value   ?? '',
         link:        item.querySelector<HTMLInputElement>('.block-link')?.value   ?? '',
@@ -53,9 +58,9 @@ export function renderAdminHome(): HTMLElement {
   function buildBlockRow(block: HomeBlock, index: number, total: number): HTMLElement {
     const row = document.createElement('div');
     row.className = 'block-form-item';
-    row.dataset['id']    = block.id;
-    row.dataset['photo'] = block.photo ?? '';
+    row.dataset['id'] = block.id;
     row.style.cssText = 'background:var(--bg-secondary);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:12px;';
+    const currentPhoto = blockPhotos[block.id];
 
     row.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
@@ -103,39 +108,40 @@ export function renderAdminHome(): HTMLElement {
           <label style="font-size:12px;font-weight:500;color:var(--text-secondary);display:block;margin-bottom:4px;">Фото</label>
           <input type="file" accept="image/*" style="display:none;" id="photo-file-${block.id}">
           <label for="photo-file-${block.id}" style="display:flex;align-items:center;justify-content:center;width:100%;height:36px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;color:var(--text-secondary);background:var(--bg-card);">
-            ${block.photo ? '📷 Изм.' : '📷 Добавить'}
+            ${currentPhoto ? '📷 Изм.' : '📷 Добавить'}
           </label>
         </div>
       </div>
 
-      ${block.photo ? `
-        <div class="photo-preview" style="margin-top:10px;display:flex;align-items:center;gap:10px;">
-          <img src="${block.photo}" style="width:64px;height:48px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">
-          <button data-action="remove-photo" style="font-size:12px;color:#ef4444;border:1px solid #fecaca;background:var(--bg-card);border-radius:6px;padding:4px 10px;cursor:pointer;">Удалить фото</button>
-        </div>` : '<div class="photo-preview"></div>'}
+      <div class="photo-preview" style="margin-top:${currentPhoto ? '10px' : '0'};display:${currentPhoto ? 'flex' : 'none'};align-items:center;gap:10px;">
+        <img src="${currentPhoto ?? ''}" style="width:64px;height:48px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">
+        <button data-action="remove-photo" style="font-size:12px;color:#ef4444;border:1px solid #fecaca;background:var(--bg-card);border-radius:6px;padding:4px 10px;cursor:pointer;">Удалить фото</button>
+      </div>
     `;
 
-    // Photo upload for block card background
+    const preview = row.querySelector<HTMLElement>('.photo-preview')!;
+    const previewImg = preview.querySelector<HTMLImageElement>('img')!;
+
+    function bindRemovePhoto(): void {
+      preview.querySelector<HTMLButtonElement>('[data-action="remove-photo"]')?.addEventListener('click', () => {
+        delete blockPhotos[block.id];
+        preview.style.display = 'none';
+        previewImg.src = '';
+      });
+    }
+    bindRemovePhoto();
+
+    // Photo upload — saves to blockPhotos, updates preview in-place
     row.querySelector<HTMLInputElement>(`#photo-file-${block.id}`)?.addEventListener('change', async e => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       const b64 = await fileToBase64(file);
-      row.dataset['photo'] = b64;
-      const preview = row.querySelector('.photo-preview')!;
-      preview.innerHTML = `
-        <img src="${b64}" style="width:64px;height:48px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">
-        <button data-action="remove-photo" style="font-size:12px;color:#ef4444;border:1px solid #fecaca;background:var(--bg-card);border-radius:6px;padding:4px 10px;cursor:pointer;">Удалить фото</button>
-      `;
-      preview.querySelector('[data-action="remove-photo"]')?.addEventListener('click', () => {
-        row.dataset['photo'] = '';
-        preview.innerHTML = '';
-      });
+      blockPhotos[block.id] = b64;
+      previewImg.src = b64;
+      preview.style.display = 'flex';
+      preview.style.marginTop = '10px';
+      bindRemovePhoto();
       (e.target as HTMLInputElement).value = '';
-    });
-
-    row.querySelector('[data-action="remove-photo"]')?.addEventListener('click', () => {
-      row.dataset['photo'] = '';
-      row.querySelector('.photo-preview')!.innerHTML = '';
     });
 
     return row;
@@ -148,9 +154,11 @@ export function renderAdminHome(): HTMLElement {
   function syncBlocksFromDom(): void {
     page.querySelectorAll<HTMLElement>('.block-form-item').forEach((item, i) => {
       if (i >= blocks.length) return;
+      const id = item.dataset['id'] ?? blocks[i].id;
       blocks[i] = {
         ...blocks[i],
-        photo:       item.dataset['photo'] || undefined,
+        id,
+        photo:       blockPhotos[id] || undefined,
         title:       item.querySelector<HTMLInputElement>('.block-title')?.value  ?? blocks[i].title,
         description: item.querySelector<HTMLInputElement>('.block-desc')?.value   ?? blocks[i].description,
         link:        item.querySelector<HTMLInputElement>('.block-link')?.value   ?? blocks[i].link,
