@@ -6,6 +6,7 @@ const NAV_LINKS = [
   { label: 'Регламенты', path: '/regulations' },
   { label: 'Инструкции', path: '/instructions' },
   { label: 'Ставки',     path: '/rates' },
+  { label: 'График',     path: '/schedule' },
   { label: 'Структура',  path: '/org' },
   { label: 'Доступы',    path: '/access' },
   { label: 'Контакты',   path: '/contacts' },

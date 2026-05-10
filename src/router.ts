@@ -13,6 +13,8 @@ import { renderAdminRates } from './pages/admin-rates';
 import { renderLogin } from './pages/login';
 import { renderAdminUsersForm } from './pages/admin-users';
 import { renderAdminHome } from './pages/admin-home';
+import { renderSchedule } from './pages/schedule';
+import { renderScheduleOverview } from './pages/schedule-overview';
 import { isAuthenticated, isManagement } from './services/auth';
 
 const PUBLIC_PATHS = new Set(['/login']);
@@ -21,6 +23,7 @@ function guardRoute(path: string): string | null {
   if (PUBLIC_PATHS.has(path)) return null;
   if (!isAuthenticated()) return '/login';
   if (path.startsWith('/admin') && !isManagement()) return '/';
+  if (path === '/schedule/overview' && !isManagement()) return '/schedule';
   return null;
 }
 
@@ -32,8 +35,10 @@ function matchRoute(path: string): () => HTMLElement {
   if (path === '/instructions') return renderInstructions;
   if (path === '/contacts')     return renderContacts;
   if (path === '/org')          return renderOrgChart;
-  if (path === '/rates')        return renderRates;
-  if (path === '/admin')        return renderAdmin;
+  if (path === '/rates')             return renderRates;
+  if (path === '/schedule')          return renderSchedule;
+  if (path === '/schedule/overview') return renderScheduleOverview;
+  if (path === '/admin')             return renderAdmin;
 
   if (path === '/admin/employee/new')   return () => renderAdminEmployee();
   if (path === '/admin/department/new') return () => renderAdminDepartment();
