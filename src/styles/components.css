@@ -1310,3 +1310,70 @@ footer {
   padding: 0;
   flex-shrink: 0;
 }
+
+/* ─── Motivation Review ───────────────────────────── */
+.review-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.review-table th {
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  background: var(--bg-secondary, #f9fafb);
+  white-space: nowrap;
+}
+
+.review-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border, #f3f4f6);
+  vertical-align: middle;
+  color: var(--text-primary, #374151);
+}
+
+.review-result {
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+}
+
+.review-result.reset {
+  border-color: #fca5a5;
+  background: rgba(239,68,68,0.05);
+}
+
+.result-reset {
+  font-size: 20px;
+  font-weight: 700;
+  color: #dc2626;
+}
+
+.result-breakdown {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  font-size: 15px;
+  color: var(--text-primary, #374151);
+  flex-wrap: wrap;
+}
+
+.result-total {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary, #111);
+}
+
+.reset-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}

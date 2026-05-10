@@ -41,7 +41,7 @@ export function renderAdmin(): HTMLElement {
             ${activeTab === 'users' ? '<button class="btn btn-primary" id="add-user-btn">+ Новый пользователь</button>' : ''}
             ${activeTab === 'home' ? '<button class="btn btn-primary" id="edit-home-btn">Редактировать</button>' : ''}
             ${activeTab === 'contacts'   ? '<button class="btn btn-primary" id="add-contact-btn">+ Добавить контакт</button>' : ''}
-            ${activeTab === 'motivation' ? '<button class="btn btn-primary" id="add-motiv-btn">+ Новый план</button>' : ''}
+            ${activeTab === 'motivation' ? '<div style="display:flex;gap:8px;"><button class="btn btn-outline" id="review-motiv-btn">Проверить результаты</button><button class="btn btn-primary" id="add-motiv-btn">+ Новый план</button></div>' : ''}
           </div>
           <div style="display:flex;gap:0;border-bottom:1px solid #e5e7eb;margin-bottom:24px;">
             ${tabBtn('employees', 'Сотрудники')}
@@ -71,6 +71,7 @@ export function renderAdmin(): HTMLElement {
     wrap.querySelector('#edit-home-btn')?.addEventListener('click', () => navigate('/admin/home'));
     wrap.querySelector('#add-contact-btn')?.addEventListener('click', () => navigate('/admin/contacts/new'));
     wrap.querySelector('#add-motiv-btn')?.addEventListener('click', () => navigate('/admin/motivation/new'));
+    wrap.querySelector('#review-motiv-btn')?.addEventListener('click', () => navigate('/admin/motivation/review'));
 
     wrap.querySelectorAll<HTMLButtonElement>('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
