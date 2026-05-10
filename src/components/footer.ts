@@ -1,6 +1,5 @@
 export function renderFooter(): HTMLElement {
   const footer = document.createElement('footer');
-  footer.style.cssText = 'border-top: 1px solid var(--border); padding: 24px 0; background: var(--bg); margin-top: auto;';
 
   footer.innerHTML = `
     <div class="container">

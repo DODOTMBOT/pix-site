@@ -26,6 +26,13 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
+const CARD_ICONS: Record<string, string> = {
+  'Регламенты':    '📋',
+  'Ключи доступа': '🔑',
+  'Инструкции':    '📖',
+  'Контакты':      '👥',
+};
+
 function buildCard(item: NavItem): HTMLElement {
   const card = document.createElement('div');
   card.className = 'section-card';
@@ -34,9 +41,14 @@ function buildCard(item: NavItem): HTMLElement {
     ? `<span class="badge badge-${item.badge.variant}">${item.badge.text}</span>`
     : '';
 
+  const icon = CARD_ICONS[item.title] ?? '📄';
+
   card.innerHTML = `
     <div class="section-card-header">
-      <span class="section-card-title">${item.title}</span>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="section-card-icon">${icon}</span>
+        <span class="section-card-title">${item.title}</span>
+      </div>
       ${badgeHtml}
     </div>
     <p class="section-card-desc">${item.description}</p>
@@ -52,29 +64,63 @@ export function renderHome(): HTMLElement {
   page.className = 'page-enter';
 
   page.innerHTML = `
-    <section style="background: linear-gradient(180deg, #fafaf7 0%, #ffffff 100%); padding: 80px 0;">
-      <div class="container" style="text-align:center;">
-        <div style="font-size:12px; font-weight:600; letter-spacing:0.12em; color:var(--text-secondary); text-transform:uppercase; margin-bottom:20px;">Портал сотрудника</div>
-        <h1 style="font-size:48px; font-weight:700; line-height:1.15; color:var(--text); margin-bottom:20px; letter-spacing:-0.03em;">
-          Всё что нужно для работы в <span style="color:var(--accent);">PiX</span>
+    <!-- Hero -->
+    <section style="padding:88px 0 80px;position:relative;overflow:hidden;">
+      <!-- Декоративная сетка точек -->
+      <div aria-hidden="true" style="
+        position:absolute;right:0;top:0;width:420px;height:100%;
+        background-image:radial-gradient(circle, rgba(249,115,22,0.18) 1.5px, transparent 1.5px);
+        background-size:28px 28px;
+        -webkit-mask-image:linear-gradient(to left, rgba(0,0,0,0.5), transparent);
+        mask-image:linear-gradient(to left, rgba(0,0,0,0.5), transparent);
+        pointer-events:none;
+      "></div>
+
+      <div class="container" style="text-align:center;position:relative;">
+        <div style="
+          display:inline-flex;align-items:center;gap:8px;
+          background:var(--accent-light);border:1px solid rgba(249,115,22,0.25);
+          border-radius:20px;padding:4px 14px;margin-bottom:28px;
+        ">
+          <span style="width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;"></span>
+          <span style="font-size:12px;font-weight:600;letter-spacing:0.1em;color:var(--accent);text-transform:uppercase;">Портал сотрудника</span>
+        </div>
+
+        <h1 style="
+          font-size:52px;font-weight:800;line-height:1.1;
+          letter-spacing:-0.035em;margin-bottom:22px;
+          color:var(--text-primary);
+        ">
+          Всё для работы в
+          <span style="background:linear-gradient(135deg,#f97316,#fbbf24);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">PiX</span>
         </h1>
-        <p style="font-size:17px; color:var(--text-secondary); max-width:480px; margin:0 auto 40px; line-height:1.6;">
-          Регламенты, инструкции, ключи доступа и контакты команды — в одном месте, всегда под рукой.
+
+        <p style="
+          font-size:17px;color:var(--text-secondary);
+          max-width:460px;margin:0 auto 40px;line-height:1.65;
+        ">
+          Регламенты, инструкции, доступы и контакты команды —<br>в одном месте, всегда под рукой.
         </p>
-        <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
-          <button class="btn btn-primary btn-lg" id="btn-open">Открыть портал</button>
-          <button class="btn btn-outline btn-lg" id="btn-more">Подробнее</button>
+
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+          <button class="btn btn-primary btn-lg" id="btn-open">
+            Открыть портал
+            <span style="font-size:16px;">→</span>
+          </button>
+          <button class="btn btn-outline btn-lg" id="btn-org">Структура</button>
         </div>
       </div>
     </section>
 
-    <section style="padding: 72px 0;">
+    <!-- Разделы -->
+    <section style="padding:64px 0 72px;">
       <div class="container">
         <div class="block-label">Разделы</div>
         <div class="cards-grid" id="cards-grid"></div>
       </div>
     </section>
 
+    <!-- Метрики -->
     <section class="metrics-section">
       <div class="container">
         <div class="metrics-inner">
@@ -99,6 +145,7 @@ export function renderHome(): HTMLElement {
   NAV_ITEMS.forEach(item => grid.appendChild(buildCard(item)));
 
   page.querySelector('#btn-open')!.addEventListener('click', () => navigate('/regulations'));
+  page.querySelector('#btn-org')!.addEventListener('click', () => navigate('/org'));
 
   return page;
 }

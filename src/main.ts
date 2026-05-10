@@ -1,8 +1,11 @@
 import './styles/global.css';
 import './styles/components.css';
+import { initTheme } from './services/theme';
 import { renderHeader } from './components/header';
 import { renderFooter } from './components/footer';
 import { initRouter } from './router';
+
+initTheme();
 
 const app = document.getElementById('app')!;
 
