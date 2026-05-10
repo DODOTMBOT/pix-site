@@ -11,7 +11,7 @@ interface Manager { id: number; name: string; pizzerias: string[]; }
 
 export function renderScheduleOverview(): HTMLElement {
   const page = document.createElement('div');
-  page.className = 'schedule-page page-enter';
+  page.className = 'schedule-page schedule-overview-page page-enter';
 
   let currentWeek = currentISOWeek();
   let rows: ScheduleRow[] = [];
@@ -70,7 +70,7 @@ export function renderScheduleOverview(): HTMLElement {
       const dayCells = DAY_KEYS.map(d => {
         const s = row.shifts[d];
         if (!s || s.off) return `<td class="day-off">—</td>`;
-        return `<td class="day-cell">${s.start ?? ''}<br><span style="color:#9ca3af">${s.end ?? ''}</span></td>`;
+        return `<td class="day-cell">${s.start ?? ''}–${s.end ?? ''}</td>`;
       }).join('');
 
       return `
