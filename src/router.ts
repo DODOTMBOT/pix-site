@@ -15,6 +15,7 @@ import { renderAdminUsersForm } from './pages/admin-users';
 import { renderAdminHome } from './pages/admin-home';
 import { renderAdminContact } from './pages/admin-contact';
 import { renderAdminMotivation } from './pages/admin-motivation';
+import { renderMotivation } from './pages/motivation';
 import { renderSchedule } from './pages/schedule';
 import { renderScheduleOverview } from './pages/schedule-overview';
 import { isAuthenticated, isManagement } from './services/auth';
@@ -27,6 +28,8 @@ function guardRoute(path: string): string | null {
   if (path.startsWith('/admin') && !isManagement()) return '/';
   if (path === '/schedule' && isManagement()) return '/schedule/overview';
   if (path === '/schedule/overview' && !isManagement()) return '/schedule';
+  if (path === '/motivation' && isManagement()) return '/admin';
+  if (path === '/admin/motivation' && !isManagement()) return '/';
   return null;
 }
 
@@ -39,6 +42,7 @@ function matchRoute(path: string): () => HTMLElement {
   if (path === '/contacts')     return renderContacts;
   if (path === '/org')          return renderOrgChart;
   if (path === '/rates')             return renderRates;
+  if (path === '/motivation')        return renderMotivation;
   if (path === '/schedule')          return renderSchedule;
   if (path === '/schedule/overview') return renderScheduleOverview;
   if (path === '/admin')             return renderAdmin;

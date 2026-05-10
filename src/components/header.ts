@@ -2,7 +2,7 @@ import { navigate } from '../router';
 import { getUser, logout, isManagement, roleLabel } from '../services/auth';
 import { toggleTheme, updateToggleButton } from '../services/theme';
 
-const NAV_LINKS = [
+const NAV_LINKS: { label: string; path: string; managementPath?: string; managerOnly?: boolean }[] = [
   { label: 'Регламенты', path: '/regulations' },
   { label: 'Инструкции', path: '/instructions' },
   { label: 'Ставки',     path: '/rates' },
@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { label: 'Структура',  path: '/org' },
   { label: 'Доступы',    path: '/access' },
   { label: 'Контакты',   path: '/contacts' },
+  { label: 'Мотивация',  path: '/motivation', managerOnly: true },
 ];
 
 export function renderHeader(): HTMLElement {
@@ -20,11 +21,13 @@ export function renderHeader(): HTMLElement {
     const curPath = window.location.pathname;
 
     const mgmt = isManagement();
-    const navHtml = NAV_LINKS.map(l => {
-      const path   = (mgmt && l.managementPath) ? l.managementPath : l.path;
-      const active = curPath === path || curPath === l.path;
-      return `<button class="header-nav-link${active ? ' active' : ''}" data-path="${path}">${l.label}</button>`;
-    }).join('');
+    const navHtml = NAV_LINKS
+      .filter(l => !(l.managerOnly && mgmt))
+      .map(l => {
+        const path   = (mgmt && l.managementPath) ? l.managementPath : l.path;
+        const active = curPath === path || curPath === l.path;
+        return `<button class="header-nav-link${active ? ' active' : ''}" data-path="${path}">${l.label}</button>`;
+      }).join('');
 
     const userArea = user
       ? `
