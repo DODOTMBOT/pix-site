@@ -8,11 +8,25 @@ function uid(): string {
   return Math.random().toString(36).slice(2, 9);
 }
 
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
+function compressImage(file: File, maxWidth = 800, quality = 0.7): Promise<string> {
+  return new Promise(resolve => {
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxWidth) {
+          height = Math.round(height * maxWidth / width);
+          width = maxWidth;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width  = width;
+        canvas.height = height;
+        canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = e.target?.result as string;
+    };
     reader.readAsDataURL(file);
   });
 }
@@ -135,7 +149,7 @@ export function renderAdminHome(): HTMLElement {
     row.querySelector<HTMLInputElement>(`#photo-file-${block.id}`)?.addEventListener('change', async e => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
-      const b64 = await fileToBase64(file);
+      const b64 = await compressImage(file, 800, 0.7);
       blockPhotos[block.id] = b64;
       previewImg.src = b64;
       preview.style.display = 'flex';
