@@ -2,9 +2,6 @@ import { navigate } from '../router';
 import { getHomeSettings } from '../services/storage';
 import type { HomeBlock } from '../types';
 
-const PLACEHOLDER_ICONS = ['🍕', '👥', '📋', '🔑', '📖', '⭐', '🚀'];
-const PLACEHOLDER_COLORS = ['#f3f4f6', '#fef3c7', '#dbeafe', '#d1fae5', '#fce7f3', '#ede9fe', '#e0f2fe'];
-
 // ─── Styles injected once ─────────────────────────────────────────────────────
 
 const HOME_CSS = `
@@ -83,6 +80,7 @@ const HOME_CSS = `
   justify-content: center;
   gap: 12px;
   padding: 20px 40px;
+  min-height: 280px;
 }
 
 .photo-card {
@@ -93,21 +91,25 @@ const HOME_CSS = `
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.3s ease, opacity 0.3s ease;
 }
-
-.photo-card:nth-child(1) { width: 120px; height: 160px; transform: rotate(-6deg) translateY(10px); opacity: 0.65; }
-.photo-card:nth-child(2) { width: 140px; height: 185px; transform: rotate(-3deg) translateY(5px); opacity: 0.8; }
-.photo-card:nth-child(3) { width: 160px; height: 210px; transform: rotate(-1deg) translateY(2px); opacity: 0.92; }
-.photo-card:nth-child(4) { width: 185px; height: 245px; transform: rotate(0deg); opacity: 1; z-index: 2; }
-.photo-card:nth-child(5) { width: 160px; height: 210px; transform: rotate(1deg) translateY(2px); opacity: 0.92; }
-.photo-card:nth-child(6) { width: 140px; height: 185px; transform: rotate(3deg) translateY(5px); opacity: 0.8; }
-.photo-card:nth-child(7) { width: 120px; height: 160px; transform: rotate(6deg) translateY(10px); opacity: 0.65; }
 
 .photo-card img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: 16px;
+  display: block;
+}
+
+.carousel-empty {
+  font-size: 14px;
+  color: #9ca3af;
+  text-align: center;
+}
+
+@keyframes carouselSpin {
+  from { transform: rotate(var(--start-rotate, 0deg)) translateY(var(--start-y, 0px)); }
+  to   { transform: rotate(calc(var(--start-rotate, 0deg) + 360deg)) translateY(var(--start-y, 0px)); }
 }
 
 .photo-placeholder {
@@ -266,56 +268,90 @@ function injectStyles(): void {
 
 // ─── Carousel ─────────────────────────────────────────────────────────────────
 
-function buildCarousel(photos: string[]): HTMLElement {
+const SIZES = [
+  { w: 110, h: 148, rotate: -6, y: 10,  opacity: 0.60 },
+  { w: 130, h: 173, rotate: -3, y: 5,   opacity: 0.75 },
+  { w: 150, h: 198, rotate: -1, y: 0,   opacity: 0.90 },
+  { w: 170, h: 226, rotate:  0, y: -8,  opacity: 1.00 },
+  { w: 150, h: 198, rotate:  1, y: 0,   opacity: 0.90 },
+  { w: 130, h: 173, rotate:  3, y: 5,   opacity: 0.75 },
+  { w: 110, h: 148, rotate:  6, y: 10,  opacity: 0.60 },
+];
+
+const PLACEHOLDER_ICONS  = ['🍕', '👥', '📋', '🔑', '📖', '⭐', '🚀'];
+const PLACEHOLDER_COLORS = ['#f3f4f6', '#fef3c7', '#dbeafe', '#d1fae5', '#fce7f3', '#ede9fe', '#e0f2fe'];
+
+function buildCarousel(allPhotos: string[]): HTMLElement {
   const section = document.createElement('section');
   section.className = 'photos-section';
 
   const carousel = document.createElement('div');
   carousel.className = 'photos-carousel';
+  section.appendChild(carousel);
 
-  const COUNT = 7;
-  const ROTATIONS  = [-6, -3, -1, 0, 1, 3, 6];
-  const TRANSLATES = [10,  5,  2, 0, 2, 5, 10];
+  let offset = 0;
+  let timer: ReturnType<typeof setInterval> | null = null;
 
-  for (let i = 0; i < COUNT; i++) {
-    const card = document.createElement('div');
-    card.className = 'photo-card';
-
-    const rot = ROTATIONS[i]  ?? 0;
-    const ty  = TRANSLATES[i] ?? 0;
-    card.style.setProperty('--rot', `${rot}deg`);
-    card.style.setProperty('--ty',  `${ty}px`);
-
-    if (photos[i]) {
-      card.innerHTML = `<img src="${photos[i]}" alt="Фото">`;
-    } else {
-      const ph = document.createElement('div');
-      ph.className = 'photo-placeholder';
-      ph.style.background = PLACEHOLDER_COLORS[i % PLACEHOLDER_COLORS.length];
-      ph.textContent = PLACEHOLDER_ICONS[i % PLACEHOLDER_ICONS.length];
-      card.appendChild(ph);
+  function getVisible(): string[] {
+    const count = Math.min(7, Math.max(allPhotos.length, 7));
+    const result: string[] = [];
+    for (let i = 0; i < count; i++) {
+      if (allPhotos.length > 0) {
+        result.push(allPhotos[(offset + i) % allPhotos.length]);
+      } else {
+        result.push('');
+      }
     }
-
-    carousel.appendChild(card);
+    return result;
   }
 
-  // Hover: fan-open / fan-close effect
-  carousel.addEventListener('mouseenter', () => {
-    carousel.querySelectorAll<HTMLElement>('.photo-card').forEach((card, i) => {
-      const spread = [-140, -90, -45, 0, 45, 90, 140];
-      card.style.transform = `translateX(${spread[i] ?? 0}px) rotate(${ROTATIONS[i] ?? 0}deg) scale(1.04)`;
-      card.style.opacity = '1';
-    });
-  });
+  function renderCards(): void {
+    const visible = getVisible();
+    carousel.innerHTML = visible.map((src, i) => {
+      const s = SIZES[i] ?? SIZES[3];
+      const imgContent = src
+        ? `<img src="${src}" alt="Фото">`
+        : `<div class="photo-placeholder" style="background:${PLACEHOLDER_COLORS[i % PLACEHOLDER_COLORS.length]};width:${s.w}px;height:${s.h}px;">${PLACEHOLDER_ICONS[i % PLACEHOLDER_ICONS.length]}</div>`;
+      return `<div class="photo-card" style="
+        width:${s.w}px;height:${s.h}px;
+        transform:rotate(${s.rotate}deg) translateY(${s.y}px);
+        opacity:${s.opacity};
+        --start-rotate:${s.rotate}deg;
+        --start-y:${s.y}px;
+        transition:transform 0.5s ease, opacity 0.5s ease;
+      ">${imgContent}</div>`;
+    }).join('');
+  }
 
-  carousel.addEventListener('mouseleave', () => {
+  function start(): void {
+    if (allPhotos.length <= 1) return;
+    timer = setInterval(() => {
+      offset = (offset + 1) % allPhotos.length;
+      renderCards();
+    }, 3000);
+  }
+
+  function stop(): void {
+    if (timer !== null) { clearInterval(timer); timer = null; }
+  }
+
+  renderCards();
+  start();
+
+  section.addEventListener('mouseenter', () => {
+    stop();
     carousel.querySelectorAll<HTMLElement>('.photo-card').forEach(card => {
-      card.style.transform = '';
-      card.style.opacity = '';
+      card.style.animation = 'carouselSpin 6s linear infinite';
     });
   });
 
-  section.appendChild(carousel);
+  section.addEventListener('mouseleave', () => {
+    carousel.querySelectorAll<HTMLElement>('.photo-card').forEach(card => {
+      card.style.animation = '';
+    });
+    start();
+  });
+
   return section;
 }
 

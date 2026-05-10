@@ -246,8 +246,7 @@ export function renderAdminHome(): HTMLElement {
         <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:24px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
             <div>
-              <h2 style="font-size:15px;font-weight:600;color:var(--text-primary);margin-bottom:2px;">Фотографии карусели</h2>
-              <p style="font-size:12px;color:var(--text-muted);">До 8 фотографий</p>
+              <h2 style="font-size:15px;font-weight:600;color:var(--text-primary);">Фотографии карусели</h2>
             </div>
             <label style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--accent);color:#fff;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">
               + Добавить фото
@@ -286,8 +285,7 @@ export function renderAdminHome(): HTMLElement {
 
   wrap.querySelector<HTMLInputElement>('#add-photos-input')!.addEventListener('change', async e => {
     const files = Array.from((e.target as HTMLInputElement).files ?? []);
-    const remaining = 8 - photos.length;
-    const b64s = await Promise.all(files.slice(0, remaining).map(fileToBase64));
+    const b64s = await Promise.all(files.map(fileToBase64));
     photos.push(...b64s);
     (e.target as HTMLInputElement).value = '';
     renderPhotos();
