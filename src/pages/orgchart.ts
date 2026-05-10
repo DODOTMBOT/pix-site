@@ -84,13 +84,20 @@ function renderModal(emp: Employee, allEmployees: Employee[], onClose: () => voi
 
 // ─── Org tree rendering ───────────────────────────────────────────────────────
 
+function splitName(fullName: string): [string, string] {
+  const parts = fullName.trim().split(/\s+/);
+  return [parts[0] ?? '', parts[1] ?? ''];
+}
+
 function buildEmpCard(emp: Employee, onClick: (emp: Employee) => void): HTMLElement {
+  const [first, last] = splitName(emp.name);
   const card = document.createElement('div');
   card.className = 'emp-card';
   card.innerHTML = `
     ${avatarHtml(emp, '')}
     <div class="emp-info">
-      <div class="emp-name">${emp.name}</div>
+      <div class="emp-firstname">${first}</div>
+      ${last ? `<div class="emp-lastname">${last}</div>` : ''}
       <div class="emp-position">${emp.position}</div>
       ${emp.pizzeria ? `<div class="emp-pizzeria">${emp.pizzeria}</div>` : ''}
     </div>

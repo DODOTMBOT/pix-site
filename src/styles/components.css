@@ -334,10 +334,10 @@ tr:last-child td {
 }
 
 .priority-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 16px;
-  align-items: start;
+  align-items: flex-start;
 }
 
 .dept-block {
@@ -345,8 +345,8 @@ tr:last-child td {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 14px;
-  min-width: 0;
-  width: 100%;
+  width: 200px;
+  flex-shrink: 0;
 }
 
 .dept-block.nested {
@@ -429,7 +429,7 @@ tr:last-child td {
 .dept-members {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
 }
 
 .emp-card {
@@ -441,8 +441,11 @@ tr:last-child td {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  min-width: 150px;
-  min-height: 48px;
+  width: 160px;
+  min-height: 56px;
+  flex-shrink: 0;
+  flex-grow: 0;
+  overflow: hidden;
   transition: border-color 0.15s, background 0.15s;
 }
 
@@ -470,6 +473,18 @@ tr:last-child td {
   min-width: 0;
 }
 
+.emp-firstname,
+.emp-lastname {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 110px;
+  line-height: 1.3;
+}
+
 .emp-name {
   font-size: 12px;
   font-weight: 600;
@@ -477,16 +492,25 @@ tr:last-child td {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 120px;
 }
 
 .emp-position {
   font-size: 11px;
   color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
 }
 
 .emp-pizzeria {
   font-size: 10px;
   color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
 }
 
 /* ─── Rate tables ─────────────────────────────────── */
