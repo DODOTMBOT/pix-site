@@ -1474,10 +1474,63 @@ footer {
 
 .admin-content {
   padding: 32px 36px;
-  max-width: 1100px;
 }
 
 @media (max-width: 768px) {
   .admin-sidebar { width: 180px; }
   .admin-content { padding: 20px 16px; }
 }
+
+/* ─── Sidebar-mode global layout ──────────────────── */
+body.sidebar-mode header { display: none; }
+body.sidebar-mode footer { display: none; }
+
+body.sidebar-mode .admin-sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  width: 220px;
+  z-index: 50;
+}
+
+body.sidebar-mode .layout > main {
+  margin-left: 220px;
+  min-height: 100vh;
+}
+
+/* ─── Sidebar accordion ───────────────────────────── */
+.sidebar-group-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.sidebar-group-toggle:hover { color: var(--text-secondary, #6b7280); }
+
+.toggle-arrow {
+  font-size: 8px;
+  transition: transform 0.2s ease;
+  display: inline-block;
+}
+
+.sidebar-group-toggle.open .toggle-arrow { transform: rotate(90deg); }
+
+.sidebar-group-items {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.25s ease;
+}
+
+.sidebar-group-items.open { max-height: 300px; }

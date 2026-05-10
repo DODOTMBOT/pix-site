@@ -105,7 +105,6 @@ export function renderMotivationReview(): HTMLElement {
       const empty = document.createElement('div');
       empty.innerHTML = `
         <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:40px;text-align:center;">
-          <div style="font-size:36px;margin-bottom:12px;">📋</div>
           <div style="font-size:15px;font-weight:600;color:var(--text-primary);margin-bottom:6px;">План не выбран</div>
           <div style="font-size:13px;color:var(--text-secondary);">Выберите пиццерию и месяц</div>
         </div>
@@ -137,7 +136,7 @@ export function renderMotivationReview(): HTMLElement {
     function buildSummary(result: ReturnType<typeof calcMotivation>): HTMLElement {
       const el = document.createElement('div');
       if (result.isReset) {
-        el.innerHTML = `<div class="result-reset">🔴 ПРЕМИЯ ОБНУЛЕНА</div>`;
+        el.innerHTML = `<div class="result-reset">ПРЕМИЯ ОБНУЛЕНА</div>`;
       } else {
         el.innerHTML = `
           <div class="result-breakdown">
@@ -206,15 +205,15 @@ export function renderMotivationReview(): HTMLElement {
             <td>
               <select class="fulfillment-select" data-mid="${metric.id}" data-field="fulfilled" style="${selStyle}">
                 <option value="" ${fulVal === '' ? 'selected' : ''}>—</option>
-                <option value="true"  ${fulVal === 'true'  ? 'selected' : ''}>✓ Да</option>
-                <option value="false" ${fulVal === 'false' ? 'selected' : ''}>✗ Нет</option>
+                <option value="true"  ${fulVal === 'true'  ? 'selected' : ''}>Да</option>
+                <option value="false" ${fulVal === 'false' ? 'selected' : ''}>Нет</option>
               </select>
             </td>
             <td>
               <select class="fulfillment-select" data-mid="${metric.id}" data-field="wowFulfilled" style="${selStyle}">
                 <option value="" ${wowVal === '' ? 'selected' : ''}>—</option>
-                <option value="true"  ${wowVal === 'true'  ? 'selected' : ''}>⭐ Да</option>
-                <option value="false" ${wowVal === 'false' ? 'selected' : ''}>✗ Нет</option>
+                <option value="true"  ${wowVal === 'true'  ? 'selected' : ''}>WOW</option>
+                <option value="false" ${wowVal === 'false' ? 'selected' : ''}>Нет</option>
               </select>
             </td>
             <td class="earned-cell" data-earned="${metric.id}" style="font-weight:600;color:#9ca3af;">—</td>
@@ -237,7 +236,7 @@ export function renderMotivationReview(): HTMLElement {
                 <th>WOW цель</th>
                 <th>Результат</th>
                 <th>Выполнено</th>
-                <th>WOW ✓</th>
+                <th>WOW</th>
                 <th>Заработано</th>
               </tr>
             </thead>
@@ -292,14 +291,14 @@ export function renderMotivationReview(): HTMLElement {
               <span class="reset-desc" style="font-size:13px;${rc.triggered ? 'color:#dc2626;font-weight:600;' : 'color:var(--text-primary);'}">${rc.description}${critHtml}</span>
             </label>
             <span style="font-size:12px;white-space:nowrap;${rc.triggered ? 'color:#dc2626;' : 'color:#9ca3af;'}">
-              ${rc.triggered ? '🔴 Сработало' : '⚪ Не сработало'}
+              ${rc.triggered ? 'Сработало' : 'Не сработало'}
             </span>
           </div>
         `;
       }).join('');
 
       resetCard.innerHTML = `
-        <h3 style="font-size:14px;font-weight:700;margin:0 0 14px;">⚠️ Условия обнуления</h3>
+        <h3 style="font-size:14px;font-weight:700;margin:0 0 14px;">Условия обнуления</h3>
         <div style="display:flex;flex-direction:column;gap:10px;">${items}</div>
       `;
 
@@ -319,7 +318,7 @@ export function renderMotivationReview(): HTMLElement {
             descSpan.style.fontWeight = cb.checked ? '600' : '';
           }
           if (status) {
-            status.textContent = cb.checked ? '🔴 Сработало' : '⚪ Не сработало';
+            status.textContent = cb.checked ? 'Сработало' : 'Не сработало';
             status.style.color = cb.checked ? '#dc2626' : '#9ca3af';
           }
         });
@@ -345,7 +344,7 @@ export function renderMotivationReview(): HTMLElement {
     actionsEl.innerHTML = `
       <button class="btn btn-primary" id="save-review">Сохранить проверку</button>
       <button class="btn btn-outline" id="go-edit">Редактировать план</button>
-      <span id="saved-ok" style="font-size:13px;color:#16a34a;display:none;">Сохранено ✓</span>
+      <span id="saved-ok" style="font-size:13px;color:#16a34a;display:none;">Сохранено</span>
     `;
     actionsEl.querySelector('#save-review')!.addEventListener('click', () => {
       savePlan(livePlan);

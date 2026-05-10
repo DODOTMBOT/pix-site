@@ -27,11 +27,11 @@ export function renderContacts(): HTMLElement {
       : initials(c.name);
 
     const phoneHtml = c.phone
-      ? `<a href="tel:${c.phone.replace(/\s/g, '')}" class="contact-field">📞 ${c.phone}</a>`
+      ? `<a href="tel:${c.phone.replace(/\s/g, '')}" class="contact-field">${c.phone}</a>`
       : '';
 
     const emailHtml = c.email
-      ? `<a href="mailto:${c.email}" class="contact-field">✉️ ${c.email}</a>`
+      ? `<a href="mailto:${c.email}" class="contact-field">${c.email}</a>`
       : '';
 
     const extraHtml = (c.extraFields ?? []).map(f =>

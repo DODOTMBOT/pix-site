@@ -117,7 +117,7 @@ export function renderAdminMotivation(planId?: string): HTMLElement {
     const rw = parseInt(rwInput.value) || 0;
     const pw = parseInt(pwInput.value) || 0;
     const sum = rw + pw;
-    hint.textContent = sum === 100 ? '' : `⚠️ Сумма весов: ${sum}% (должно быть 100%)`;
+    hint.textContent = sum === 100 ? '' : `Сумма весов: ${sum}% (должно быть 100%)`;
     hint.style.color = sum === 100 ? '' : '#f97316';
   }
   rwInput.addEventListener('input', updateHint);
@@ -149,7 +149,7 @@ export function renderAdminMotivation(planId?: string): HTMLElement {
                 <th style="padding:8px;text-align:left;font-size:11px;font-weight:600;color:#6b7280;">WOW</th>
                 <th style="padding:8px;text-align:left;font-size:11px;font-weight:600;color:#6b7280;">Результат</th>
                 <th style="padding:8px;text-align:left;font-size:11px;font-weight:600;color:#6b7280;width:90px;">Выполнено</th>
-                <th style="padding:8px;text-align:left;font-size:11px;font-weight:600;color:#6b7280;width:80px;">WOW ✓</th>
+                <th style="padding:8px;text-align:left;font-size:11px;font-weight:600;color:#6b7280;width:80px;">WOW</th>
               </tr>
             </thead>
             <tbody id="tbody-${label}"></tbody>
@@ -244,7 +244,7 @@ export function renderAdminMotivation(planId?: string): HTMLElement {
           <input type="checkbox" ${rc.triggered ? 'checked' : ''} data-ri="${i}" data-field="triggered" style="width:16px;height:16px;">
           Сработало
         </label>
-        <button data-del="${i}" style="border:1px solid #fecaca;background:var(--bg-card);border-radius:6px;padding:6px 10px;cursor:pointer;color:#ef4444;font-size:13px;white-space:nowrap;">✕</button>
+        <button data-del="${i}" style="border:1px solid #fecaca;background:var(--bg-card);border-radius:6px;padding:6px 10px;cursor:pointer;color:#ef4444;font-size:13px;white-space:nowrap;">×</button>
       `;
       row.querySelector<HTMLInputElement>('[data-field="description"]')!.addEventListener('input', e => {
         resetConditions[i].description = (e.target as HTMLInputElement).value;

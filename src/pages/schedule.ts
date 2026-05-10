@@ -69,7 +69,7 @@ export function renderSchedule(): HTMLElement {
         valEl.textContent = `${total} ч`;
         valEl.style.color = '#ef4444';
         const lbl = page.querySelector<HTMLElement>('.total-warn');
-        if (lbl) lbl.textContent = '⚠️ менее 40 часов';
+        if (lbl) lbl.textContent = 'менее 40 часов';
       } else {
         valEl.textContent = `${total} ч`;
         valEl.style.color = '#22c55e';
@@ -112,7 +112,7 @@ export function renderSchedule(): HTMLElement {
       return Math.round(t * 10) / 10;
     })();
     const totalColor  = total < 40 ? '#ef4444' : '#22c55e';
-    const totalWarn   = total < 40 ? '⚠️ менее 40 часов' : '';
+    const totalWarn   = total < 40 ? 'менее 40 часов' : '';
     const overviewBtn = isManagement()
       ? `<button class="btn btn-outline" id="sched-overview-btn" style="font-size:13px;">Обзор всех →</button>`
       : '';
@@ -121,7 +121,7 @@ export function renderSchedule(): HTMLElement {
       <div class="page-header">
         <div class="page-label">МОЙ ГРАФИК</div>
         <h1 style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;letter-spacing:-0.02em;margin:4px 0 0;">График работы</h1>
-        <div class="schedule-user">👤 ${user.name}</div>
+        <div class="schedule-user">${user.name}</div>
       </div>
 
       <div class="week-nav">
@@ -237,7 +237,7 @@ export function renderSchedule(): HTMLElement {
         employee: user.name,
         shifts:   readShiftsFromDom(),
       });
-      btn.textContent       = '✓ Сохранено';
+      btn.textContent       = 'Сохранено';
       btn.style.background  = '#16a34a';
       setTimeout(() => {
         saving = false;

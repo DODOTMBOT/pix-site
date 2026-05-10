@@ -48,7 +48,7 @@ export function renderAdminContact(contactId?: string): HTMLElement {
       row.innerHTML = `
         <input type="text" value="${f.label}" placeholder="Название (Telegram)" style="${IS}" data-i="${i}" data-field="label">
         <input type="text" value="${f.value}" placeholder="@username" style="${IS}" data-i="${i}" data-field="value">
-        <button data-del="${i}" style="border:1px solid #fecaca;background:var(--bg-card);border-radius:6px;padding:6px 10px;cursor:pointer;color:#ef4444;font-size:13px;">✕</button>
+        <button data-del="${i}" style="border:1px solid #fecaca;background:var(--bg-card);border-radius:6px;padding:6px 10px;cursor:pointer;color:#ef4444;font-size:13px;">×</button>
       `;
       row.querySelector<HTMLInputElement>('[data-field="label"]')!.addEventListener('input', e => {
         extraFields[i].label = (e.target as HTMLInputElement).value;
@@ -109,7 +109,7 @@ export function renderAdminContact(contactId?: string): HTMLElement {
               </div>
               <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <label style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;color:var(--text-secondary);">
-                  📷 Загрузить
+                  Загрузить фото
                   <input type="file" id="f-avatar" accept="image/*" style="display:none;">
                 </label>
                 <button id="remove-avatar" style="padding:7px 12px;border:1px solid #fecaca;background:var(--bg-card);border-radius:8px;cursor:pointer;font-size:13px;color:#ef4444;${avatar ? '' : 'display:none;'}">Удалить</button>

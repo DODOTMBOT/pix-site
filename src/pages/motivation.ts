@@ -73,7 +73,7 @@ export function renderMotivation(): HTMLElement {
       ? `<select id="piz-select" style="padding:5px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg-input,var(--bg-primary));color:var(--text-primary);outline:none;">
            ${pizzerias.map(p => `<option value="${p}" ${p === selectedPizzeria ? 'selected' : ''}>${p}</option>`).join('')}
          </select>`
-      : `<span>📍 ${selectedPizzeria || '—'}</span>`;
+      : `<span>${selectedPizzeria || '—'}</span>`;
 
     wrap.innerHTML = `
       <div class="page-header" style="margin-bottom:20px;">
@@ -96,8 +96,8 @@ export function renderMotivation(): HTMLElement {
       const alertEl = document.createElement('div');
       alertEl.className = 'future-alert';
       alertEl.innerHTML = `
-        <span>📅 Руководство уже настроило план на <strong>${futurePlans.map(m => monthLabel(m)).join(', ')}</strong></span>
-        <button class="future-alert-close" id="alert-close">✕</button>
+        <span>Руководство уже настроило план на <strong>${futurePlans.map(m => monthLabel(m)).join(', ')}</strong></span>
+        <button class="future-alert-close" id="alert-close">×</button>
       `;
       alertEl.querySelector('#alert-close')!.addEventListener('click', () => {
         alertDismissed = true;
@@ -132,7 +132,6 @@ export function renderMotivation(): HTMLElement {
       const empty = document.createElement('div');
       empty.innerHTML = `
         <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:40px;text-align:center;">
-          <div style="font-size:36px;margin-bottom:12px;">📋</div>
           <div style="font-size:15px;font-weight:600;color:var(--text-primary);margin-bottom:6px;">План не настроен</div>
           <div style="font-size:13px;color:var(--text-secondary);">План на ${monthLabel(selectedMonth)} ещё не настроен руководством</div>
         </div>
@@ -183,9 +182,9 @@ export function renderMotivation(): HTMLElement {
         const unit   = metric.unit ? ` ${metric.unit}` : '';
 
         let statusHtml = '';
-        if (t.wowFulfilled === true)   statusHtml = `<span class="status-wow">⭐ WOW!</span>`;
-        else if (t.fulfilled === true)  statusHtml = `<span class="status-ok">✓ Выполнено</span>`;
-        else if (t.fulfilled === false) statusHtml = `<span class="status-fail">✗ Не выполнено</span>`;
+        if (t.wowFulfilled === true)   statusHtml = `<span class="status-wow">WOW!</span>`;
+        else if (t.fulfilled === true)  statusHtml = `<span class="status-ok">Выполнено</span>`;
+        else if (t.fulfilled === false) statusHtml = `<span class="status-fail">Не выполнено</span>`;
         else                            statusHtml = `<span class="status-pending">Ожидает проверки</span>`;
 
         const targetStr = t.targetValue ? `${prefix} ${t.targetValue}${unit}` : '—';
@@ -241,13 +240,13 @@ export function renderMotivation(): HTMLElement {
           <li class="reset-item${triggered ? ' triggered' : ''}">
             <span>${rc.description}${critStr}</span>
             <span class="reset-status ${triggered ? 'red' : 'gray'}">
-              ${triggered ? '🔴 Сработало' : '⚪ Не сработало'}
+              ${triggered ? 'Сработало' : 'Не сработало'}
             </span>
           </li>
         `;
       }).join('');
       resetEl.innerHTML = `
-        <h3 style="font-size:14px;font-weight:700;margin:0 0 14px;">⚠️ Условия обнуления премии</h3>
+        <h3 style="font-size:14px;font-weight:700;margin:0 0 14px;">Условия обнуления премии</h3>
         <ul class="reset-list">${items}</ul>
       `;
       wrap.appendChild(resetEl);
@@ -261,7 +260,7 @@ export function renderMotivation(): HTMLElement {
       footer.innerHTML = `
         <button class="btn btn-primary" id="save-results">Сохранить результаты</button>
         <div class="footer-note">После сохранения ТУ проверит и поставит статус выполнения</div>
-        <span id="save-ok" style="font-size:13px;color:#16a34a;display:none;">Сохранено ✓</span>
+        <span id="save-ok" style="font-size:13px;color:#16a34a;display:none;">Сохранено</span>
       `;
       footer.querySelector('#save-results')!.addEventListener('click', () => {
         const inputs = wrap.querySelectorAll<HTMLInputElement>('.result-input');

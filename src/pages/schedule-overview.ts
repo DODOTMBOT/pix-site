@@ -31,7 +31,7 @@ export function renderScheduleOverview(): HTMLElement {
 
     const missingHtml = notFilled.length
       ? `<div class="alert-row alert-missing">
-          <span class="alert-icon">⚠️</span>
+          <span class="alert-icon">!</span>
           <span>Не заполнили график:
             ${notFilled.map(m => `<strong>${m.name}</strong>${m.pizzerias.length ? ` (${m.pizzerias.join(', ')})` : ''}`).join(', ')}
           </span>
@@ -41,7 +41,7 @@ export function renderScheduleOverview(): HTMLElement {
     const lowHtml = lowHours.length
       ? lowHours.map(r =>
           `<div class="alert-row alert-low">
-            <span class="alert-icon">🕐</span>
+            <span class="alert-icon">!</span>
             <span>Менее 40 часов: <strong>${r.name}</strong> — ${r.hours} ч${r.pizzeria ? ` (${r.pizzeria})` : ''}</span>
           </div>`
         ).join('')

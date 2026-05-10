@@ -24,76 +24,84 @@ import { isAuthenticated, isManagement } from './services/auth';
 const PUBLIC_PATHS = new Set(['/login']);
 
 function guardRoute(path: string): string | null {
-  if (PUBLIC_PATHS.has(path)) return null;
+  const cleanPath = path.split('#')[0];
+  if (PUBLIC_PATHS.has(cleanPath)) return null;
   if (!isAuthenticated()) return '/login';
-  if (path.startsWith('/admin') && !isManagement()) return '/';
-  if (path === '/schedule' && isManagement()) return '/schedule/overview';
-  if (path === '/schedule/overview' && !isManagement()) return '/schedule';
-  if (path === '/motivation' && isManagement()) return '/admin';
-  if (path === '/admin/motivation' && !isManagement()) return '/';
+  if (cleanPath.startsWith('/admin') && !isManagement()) return '/';
+  if (cleanPath === '/schedule' && isManagement()) return '/schedule/overview';
+  if (cleanPath === '/schedule/overview' && !isManagement()) return '/schedule';
+  if (cleanPath === '/motivation' && isManagement()) return '/admin';
   return null;
 }
 
 function matchRoute(path: string): () => HTMLElement {
-  if (path === '/login')        return renderLogin;
-  if (path === '/')             return renderHome;
-  if (path === '/regulations')  return renderRegulations;
-  if (path === '/access')       return renderAccess;
-  if (path === '/instructions') return renderInstructions;
-  if (path === '/contacts')     return renderContacts;
-  if (path === '/org')          return renderOrgChart;
-  if (path === '/rates')             return renderRates;
-  if (path === '/motivation')        return renderMotivation;
-  if (path === '/schedule')          return renderSchedule;
-  if (path === '/schedule/overview') return renderScheduleOverview;
-  if (path === '/admin')             return renderAdmin;
+  const p = path.split('#')[0]; // strip hash — hash is read by pages via window.location.hash
 
-  if (path === '/admin/employee/new')   return () => renderAdminEmployee();
-  if (path === '/admin/department/new') return () => renderAdminDepartment();
-  if (path === '/admin/access/new')     return () => renderAdminAccess();
-  if (path === '/admin/rates/new')      return () => renderAdminRates();
-  if (path === '/admin/users/new')      return () => renderAdminUsersForm();
-  if (path === '/admin/home')           return renderAdminHome;
-  if (path === '/admin/contacts/new')    return () => renderAdminContact();
-  if (path === '/admin/motivation/new')    return () => renderAdminMotivation();
-  if (path === '/admin/motivation/review') return renderMotivationReview;
+  if (p === '/login')        return renderLogin;
+  if (p === '/')             return renderHome;
+  if (p === '/regulations')  return renderRegulations;
+  if (p === '/access')       return renderAccess;
+  if (p === '/instructions') return renderInstructions;
+  if (p === '/contacts')     return renderContacts;
+  if (p === '/org')          return renderOrgChart;
+  if (p === '/rates')             return renderRates;
+  if (p === '/motivation')        return renderMotivation;
+  if (p === '/schedule')          return renderSchedule;
+  if (p === '/schedule/overview') return renderScheduleOverview;
+  if (p === '/admin')             return renderAdmin;
 
-  const empMatch  = path.match(/^\/admin\/employee\/(.+)$/);
+  if (p === '/admin/employee/new')   return () => renderAdminEmployee();
+  if (p === '/admin/department/new') return () => renderAdminDepartment();
+  if (p === '/admin/access/new')     return () => renderAdminAccess();
+  if (p === '/admin/rates/new')      return () => renderAdminRates();
+  if (p === '/admin/users/new')      return () => renderAdminUsersForm();
+  if (p === '/admin/home')           return renderAdminHome;
+  if (p === '/admin/contacts/new')    return () => renderAdminContact();
+  if (p === '/admin/motivation/new')    return () => renderAdminMotivation();
+  if (p === '/admin/motivation/review') return renderMotivationReview;
+
+  const empMatch  = p.match(/^\/admin\/employee\/(.+)$/);
   if (empMatch)  return () => renderAdminEmployee(empMatch[1]);
 
-  const deptMatch = path.match(/^\/admin\/department\/(.+)$/);
+  const deptMatch = p.match(/^\/admin\/department\/(.+)$/);
   if (deptMatch) return () => renderAdminDepartment(deptMatch[1]);
 
-  const accMatch  = path.match(/^\/admin\/access\/(.+)$/);
+  const accMatch  = p.match(/^\/admin\/access\/(.+)$/);
   if (accMatch)  return () => renderAdminAccess(accMatch[1]);
 
-  const rateMatch = path.match(/^\/admin\/rates\/(.+)$/);
+  const rateMatch = p.match(/^\/admin\/rates\/(.+)$/);
   if (rateMatch) return () => renderAdminRates(rateMatch[1]);
 
-  const userMatch = path.match(/^\/admin\/users\/(.+)$/);
+  const userMatch = p.match(/^\/admin\/users\/(.+)$/);
   if (userMatch) return () => renderAdminUsersForm(userMatch[1]);
 
-  const contactMatch    = path.match(/^\/admin\/contacts\/(.+)$/);
-  if (contactMatch)    return () => renderAdminContact(contactMatch[1]);
+  const contactMatch = p.match(/^\/admin\/contacts\/(.+)$/);
+  if (contactMatch)  return () => renderAdminContact(contactMatch[1]);
 
-  const motivMatch = path.match(/^\/admin\/motivation\/(.+)$/);
+  const motivMatch = p.match(/^\/admin\/motivation\/(.+)$/);
   if (motivMatch)  return () => renderAdminMotivation(motivMatch[1]);
 
   return renderHome;
+}
+
+function dispatchNav(path: string): void {
+  window.dispatchEvent(new CustomEvent('pix:navigate', { detail: { path } }));
 }
 
 let outlet: HTMLElement | null = null;
 
 function renderCurrent(): void {
   if (!outlet) return;
-  const path = window.location.pathname;
+  const path = window.location.pathname + window.location.hash;
   const redirect = guardRoute(path);
   if (redirect) {
     window.history.replaceState(null, '', redirect);
     outlet.replaceChildren(matchRoute(redirect)());
+    dispatchNav(redirect);
     return;
   }
   outlet.replaceChildren(matchRoute(path)());
+  dispatchNav(path);
 }
 
 export function navigate(path: string): void {
@@ -101,6 +109,7 @@ export function navigate(path: string): void {
   const target = redirect ?? path;
   window.history.pushState(null, '', target);
   outlet?.replaceChildren(matchRoute(target)());
+  dispatchNav(target);
 }
 
 export function initRouter(appOutlet: HTMLElement): void {
