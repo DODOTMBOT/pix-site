@@ -1,4 +1,4 @@
-import type { Employee, Department, AccessEntry, RateDocument, HomeSettings, MotivationMetric, MotivationPlan } from '../types';
+import type { Employee, Department, AccessEntry, RateDocument, HomeSettings, MotivationMetric, MotivationPlan, ProjectTemplate, ProjectAssignment } from '../types';
 
 // ─── Home settings ────────────────────────────────────────────────────────────
 
@@ -307,4 +307,27 @@ export function saveRateDocument(doc: RateDocument): void {
 
 export function deleteRateDocument(id: string): void {
   saveRateDocuments(getRateDocuments().filter(d => d.id !== id));
+}
+
+// ─── Projects ─────────────────────────────────────────────────────────────────
+
+const TEMPLATES_KEY   = 'pix_project_templates';
+const ASSIGNMENTS_KEY = 'pix_project_assignments';
+
+export function getProjectTemplates(): ProjectTemplate[] {
+  const raw = localStorage.getItem(TEMPLATES_KEY);
+  return raw ? JSON.parse(raw) as ProjectTemplate[] : [];
+}
+
+export function saveProjectTemplates(templates: ProjectTemplate[]): void {
+  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
+}
+
+export function getProjectAssignments(): ProjectAssignment[] {
+  const raw = localStorage.getItem(ASSIGNMENTS_KEY);
+  return raw ? JSON.parse(raw) as ProjectAssignment[] : [];
+}
+
+export function saveProjectAssignments(assignments: ProjectAssignment[]): void {
+  localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(assignments));
 }

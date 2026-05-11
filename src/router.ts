@@ -16,6 +16,8 @@ import { renderAdminHome } from './pages/admin-home';
 import { renderAdminContact } from './pages/admin-contact';
 import { renderAdminMotivation } from './pages/admin-motivation';
 import { renderMotivation } from './pages/motivation';
+import { renderProjectsTemplates } from './pages/projects-templates';
+import { renderProjectsAssignments } from './pages/projects-assignments';
 import { renderMotivationReview } from './pages/motivation-review';
 import { renderSchedule } from './pages/schedule';
 import { renderScheduleOverview } from './pages/schedule-overview';
@@ -58,7 +60,9 @@ function matchRoute(path: string): () => HTMLElement {
   if (p === '/admin/home')           return renderAdminHome;
   if (p === '/admin/contacts/new')    return () => renderAdminContact();
   if (p === '/admin/motivation/new')    return () => renderAdminMotivation();
-  if (p === '/admin/motivation/review') return renderMotivationReview;
+  if (p === '/admin/motivation/review')      return renderMotivationReview;
+  if (p === '/admin/projects/templates')    return renderProjectsTemplates;
+  if (p === '/admin/projects/assignments')  return renderProjectsAssignments;
 
   const empMatch  = p.match(/^\/admin\/employee\/(.+)$/);
   if (empMatch)  return () => renderAdminEmployee(empMatch[1]);

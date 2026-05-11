@@ -146,6 +146,40 @@ export interface Contact {
   avatar?: string;
 }
 
+export interface ProjectSubBlock {
+  id: string;
+  price: number;
+  tasks: string;
+  checkpoints: string;
+  hint?: string;
+}
+
+export interface ProjectBlock {
+  id: string;
+  name: string;
+  price: number;
+  hint?: string;
+  subBlocks: ProjectSubBlock[];
+}
+
+export interface ProjectTemplate {
+  id: string;
+  title: string;
+  blocks: ProjectBlock[];
+  createdAt: string;
+}
+
+export interface ProjectAssignment {
+  id: string;
+  templateId: string;
+  templateTitle: string;
+  employeeName: string;
+  startDate: string;
+  endDate?: string;
+  notes?: string;
+  createdAt: string;
+}
+
 export interface Employee {
   id: string;
   name: string;

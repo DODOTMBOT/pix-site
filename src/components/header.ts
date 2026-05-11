@@ -85,7 +85,7 @@ function buildSidebar(onUpdate: (newNav: HTMLElement) => void): HTMLElement {
 
     const financeOpen = (curPath === '/admin' && (curHash === 'motivation' || curHash === 'rates' || curHash === '')) ||
                         curPath.startsWith('/admin/motivation');
-    const managersOpen = curPath === '/schedule/overview';
+    const managersOpen = curPath === '/schedule/overview' || curPath.startsWith('/admin/projects');
     const pixOpen      = curPath === '/admin' && ['employees', 'departments', 'contacts', 'access'].includes(curHash);
     const systemOpen   = (curPath === '/admin' && curHash === 'users') || curPath === '/admin/home';
 
@@ -129,7 +129,9 @@ function buildSidebar(onUpdate: (newNav: HTMLElement) => void): HTMLElement {
     ]));
 
     adminItems.appendChild(makeSubgroup('managers', 'Управляющие', managersOpen, [
-      makeItem('График', '/schedule/overview', true),
+      makeItem('График',              '/schedule/overview',          true),
+      makeItem('Шаблоны проектов',   '/admin/projects/templates',   true),
+      makeItem('Назначения',          '/admin/projects/assignments', true),
     ]));
 
     adminItems.appendChild(makeSubgroup('pix', 'PiX', pixOpen, [
