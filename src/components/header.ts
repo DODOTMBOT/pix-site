@@ -31,26 +31,6 @@ const NAV_LINKS: { label: string; path: string; managementPath?: string; manager
   { label: 'Мотивация',  path: '/motivation', managerOnly: true },
 ];
 
-// ── Active item detection ─────────────────────────────────────────────────────
-function getActiveId(): string {
-  const path = window.location.pathname;
-  const hash = window.location.hash.slice(1);
-
-  if (path === '/schedule/overview' || path === '/schedule') return 'schedule';
-  if (path === '/org')                              return 'org';
-  if (path.startsWith('/admin/employee'))           return 'employees';
-  if (path.startsWith('/admin/department'))         return 'departments';
-  if (path.startsWith('/admin/access'))             return 'access';
-  if (path.startsWith('/admin/rates'))              return 'rates';
-  if (path.startsWith('/admin/contacts'))           return 'contacts';
-  if (path === '/admin/motivation/review')          return 'motivation-review';
-  if (path.startsWith('/admin/motivation'))         return 'motivation';
-  if (path.startsWith('/admin/users'))              return 'users';
-  if (path === '/admin/home')                       return 'home';
-  if (path === '/admin') return hash || 'motivation';
-  return '';
-}
-
 // ── Sidebar builder ───────────────────────────────────────────────────────────
 function buildSidebar(onUpdate: (newNav: HTMLElement) => void): HTMLElement {
   const aside = document.createElement('aside');
@@ -63,78 +43,117 @@ function buildSidebar(onUpdate: (newNav: HTMLElement) => void): HTMLElement {
   logo.querySelector('.logo-mark')!.addEventListener('click', () => navigate('/'));
   aside.appendChild(logo);
 
-  // Nav (rebuilt on navigation)
   function buildNav(): HTMLElement {
-    const activeId = getActiveId();
-    const nav      = document.createElement('nav');
-    nav.className  = 'sidebar-nav';
+    const curPath = window.location.pathname;
+    const curHash = window.location.hash.slice(1);
 
-    const makeItem = (id: string, label: string, icon: string, onClick: () => void): HTMLElement => {
+    const isActivePath = (path: string): boolean => {
+      if (path.includes('#')) {
+        const [p, h] = path.split('#');
+        return curPath === p && curHash === h;
+      }
+      if (path === '/') return curPath === '/';
+      return curPath === path;
+    };
+
+    const nav = document.createElement('nav');
+    nav.className = 'sidebar-nav';
+
+    const makeItem = (label: string, path: string, isSub = false): HTMLElement => {
       const el = document.createElement('a');
-      el.className = `sidebar-item${activeId === id ? ' active' : ''}`;
-      el.innerHTML = `<span class="sidebar-icon">${icon}</span><span>${label}</span>`;
-      el.addEventListener('click', e => { e.preventDefault(); onClick(); });
+      el.className = `sidebar-item${isSub ? ' sub' : ''}${isActivePath(path) ? ' active' : ''}`;
+      el.textContent = label;
+      el.href = path;
+      el.addEventListener('click', e => { e.preventDefault(); navigate(path); });
       return el;
     };
 
-    const makeGroup = (
-      groupId: string,
-      label: string,
-      items: Array<{ id: string; label: string; icon: string; onClick: () => void }>,
-    ): HTMLElement => {
-      const hasActive = items.some(i => getActiveId() === i.id);
-      const groupEl  = document.createElement('div');
-      groupEl.className = 'sidebar-group';
+    // Direct links
+    nav.appendChild(makeItem('Главная', '/'));
+    nav.appendChild(makeItem('Структура', '/org'));
+    nav.appendChild(makeItem('Контакты', '/contacts'));
+    nav.appendChild(makeItem('Доступы', '/access'));
+    nav.appendChild(makeItem('Ставки', '/rates'));
+    nav.appendChild(makeItem('График управляющих', '/schedule/overview'));
+
+    const divider = document.createElement('div');
+    divider.className = 'sidebar-divider';
+    nav.appendChild(divider);
+
+    // "Панель управления" accordion
+    const isAdminPath = curPath.startsWith('/admin');
+
+    const financeOpen = (curPath === '/admin' && (curHash === 'motivation' || curHash === 'rates' || curHash === '')) ||
+                        curPath.startsWith('/admin/motivation');
+    const managersOpen = curPath === '/schedule/overview';
+    const pixOpen      = curPath === '/admin' && ['employees', 'departments', 'contacts', 'access'].includes(curHash);
+    const systemOpen   = (curPath === '/admin' && curHash === 'users') || curPath === '/admin/home';
+
+    const makeSubgroup = (groupId: string, label: string, isOpen: boolean, items: HTMLElement[]): HTMLElement => {
+      const wrap = document.createElement('div');
 
       const toggle = document.createElement('button');
-      toggle.className = `sidebar-group-toggle${hasActive ? ' open' : ''}`;
+      toggle.className = `sidebar-subgroup-toggle${isOpen ? ' open' : ''}`;
       toggle.dataset['group'] = groupId;
       toggle.innerHTML = `<span>${label}</span><span class="toggle-arrow">›</span>`;
 
       const itemsEl = document.createElement('div');
-      itemsEl.className = `sidebar-group-items${hasActive ? ' open' : ''}`;
-      itemsEl.id = `group-${groupId}`;
-      items.forEach(i => itemsEl.appendChild(makeItem(i.id, i.label, i.icon, i.onClick)));
+      itemsEl.className = `sidebar-subgroup-items${isOpen ? ' open' : ''}`;
+      itemsEl.id = `subgroup-${groupId}`;
+      items.forEach(item => itemsEl.appendChild(item));
 
       toggle.addEventListener('click', () => {
-        const isOpen = itemsEl.classList.contains('open');
-        nav.querySelectorAll('.sidebar-group-items').forEach(el => el.classList.remove('open'));
-        nav.querySelectorAll('.sidebar-group-toggle').forEach(el => el.classList.remove('open'));
-        if (!isOpen) { itemsEl.classList.add('open'); toggle.classList.add('open'); }
+        const wasOpen = itemsEl.classList.contains('open');
+        itemsEl.classList.toggle('open', !wasOpen);
+        toggle.classList.toggle('open', !wasOpen);
       });
 
-      groupEl.appendChild(toggle);
-      groupEl.appendChild(itemsEl);
-      return groupEl;
+      wrap.appendChild(toggle);
+      wrap.appendChild(itemsEl);
+      return wrap;
     };
 
-    const goTab = (tab: string) => navigate(`/admin#${tab}`);
+    const adminToggle = document.createElement('button');
+    adminToggle.className = `sidebar-group-toggle${isAdminPath ? ' open' : ''}`;
+    adminToggle.dataset['group'] = 'admin';
+    adminToggle.innerHTML = `<span>Панель управления</span><span class="toggle-arrow">›</span>`;
 
-    nav.appendChild(makeItem('home', 'Главная', IC.home, () => goTab('home')));
+    const adminItems = document.createElement('div');
+    adminItems.className = `sidebar-group-items${isAdminPath ? ' open' : ''}`;
+    adminItems.id = 'group-admin';
 
-    nav.appendChild(makeGroup('finance', 'Финансы', [
-      { id: 'motivation',        label: 'Мотивация',             icon: IC.motivation, onClick: () => goTab('motivation') },
-      { id: 'motivation-review', label: 'Проверить результаты',  icon: IC.review,     onClick: () => navigate('/admin/motivation/review') },
-      { id: 'rates',             label: 'Ставки',                icon: IC.rates,      onClick: () => goTab('rates') },
+    adminItems.appendChild(makeSubgroup('finance', 'Финансы', financeOpen, [
+      makeItem('Мотивация',             '/admin#motivation',          true),
+      makeItem('Проверить результаты',  '/admin/motivation/review',   true),
+      makeItem('Ставки',                '/admin#rates',               true),
     ]));
 
-    nav.appendChild(makeGroup('managers', 'Управляющие', [
-      { id: 'schedule', label: 'График управляющих', icon: IC.calendar, onClick: () => navigate('/schedule/overview') },
+    adminItems.appendChild(makeSubgroup('managers', 'Управляющие', managersOpen, [
+      makeItem('График', '/schedule/overview', true),
     ]));
 
-    nav.appendChild(makeGroup('pix', 'PiX', [
-      { id: 'org',      label: 'Структура', icon: IC.building, onClick: () => navigate('/org')       },
-      { id: 'contacts', label: 'Контакты',  icon: IC.users,    onClick: () => goTab('contacts')      },
-      { id: 'access',   label: 'Доступы',   icon: IC.key,      onClick: () => goTab('access')        },
+    adminItems.appendChild(makeSubgroup('pix', 'PiX', pixOpen, [
+      makeItem('Сотрудники', '/admin#employees',   true),
+      makeItem('Отделы',     '/admin#departments', true),
+      makeItem('Контакты',   '/admin#contacts',    true),
+      makeItem('Доступы',    '/admin#access',      true),
     ]));
 
     if (isSuperAdmin()) {
-      nav.appendChild(makeGroup('system', 'Система', [
-        { id: 'employees',   label: 'Сотрудники',   icon: IC.person,  onClick: () => goTab('employees')   },
-        { id: 'departments', label: 'Отделы',        icon: IC.layers,  onClick: () => goTab('departments') },
-        { id: 'users',       label: 'Пользователи',  icon: IC.gear,    onClick: () => goTab('users')       },
+      adminItems.appendChild(makeSubgroup('system', 'Система', systemOpen, [
+        makeItem('Пользователи',   '/admin#users',  true),
+        makeItem('Главная страница', '/admin/home', true),
       ]));
     }
+
+    adminToggle.addEventListener('click', () => {
+      const isOpen = adminItems.classList.contains('open');
+      adminItems.classList.toggle('open', !isOpen);
+      adminToggle.classList.toggle('open', !isOpen);
+    });
+
+    nav.appendChild(adminToggle);
+    nav.appendChild(adminItems);
 
     return nav;
   }

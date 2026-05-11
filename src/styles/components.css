@@ -1423,13 +1423,10 @@ footer {
   margin-top: 6px;
 }
 
-.sidebar-group-label {
-  font-size: 10px;
-  font-weight: 700;
-  color: #9ca3af;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding: 6px 10px 4px;
+.sidebar-divider {
+  height: 1px;
+  background: var(--border, #f3f4f6);
+  margin: 8px 0;
 }
 
 .sidebar-item {
@@ -1470,10 +1467,11 @@ footer {
   flex: 1;
   min-width: 0;
   overflow-x: hidden;
+  padding: 32px 40px 32px 32px;
 }
 
 .admin-content {
-  padding: 32px 36px;
+  padding: 0;
 }
 
 @media (max-width: 768px) {
@@ -1500,37 +1498,65 @@ body.sidebar-mode .layout > main {
 }
 
 /* ─── Sidebar accordion ───────────────────────────── */
-.sidebar-group-toggle {
+.sidebar-group-toggle,
+.sidebar-subgroup-toggle {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 10px 4px;
-  font-size: 10px;
-  font-weight: 700;
-  color: #9ca3af;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  padding: 8px 12px;
   background: none;
   border: none;
   cursor: pointer;
   font-family: inherit;
+  border-radius: 8px;
+  transition: background 0.15s;
+  text-align: left;
 }
 
-.sidebar-group-toggle:hover { color: var(--text-secondary, #6b7280); }
+.sidebar-group-toggle:hover,
+.sidebar-subgroup-toggle:hover {
+  background: var(--bg-secondary, #f3f4f6);
+}
+
+.sidebar-group-toggle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary, #111);
+}
+
+.sidebar-subgroup-toggle {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  padding: 6px 12px 6px 16px;
+  margin-top: 2px;
+}
 
 .toggle-arrow {
-  font-size: 8px;
+  font-size: 14px;
+  color: #9ca3af;
   transition: transform 0.2s ease;
   display: inline-block;
+  flex-shrink: 0;
 }
 
-.sidebar-group-toggle.open .toggle-arrow { transform: rotate(90deg); }
+.sidebar-group-toggle.open .toggle-arrow,
+.sidebar-subgroup-toggle.open .toggle-arrow {
+  transform: rotate(90deg);
+}
 
-.sidebar-group-items {
+.sidebar-group-items,
+.sidebar-subgroup-items {
   overflow: hidden;
   max-height: 0;
   transition: max-height 0.25s ease;
 }
 
-.sidebar-group-items.open { max-height: 300px; }
+.sidebar-group-items.open  { max-height: 500px; }
+.sidebar-subgroup-items.open { max-height: 300px; }
+
+.sidebar-item.sub {
+  padding-left: 28px;
+  font-size: 12px;
+}
