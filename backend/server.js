@@ -1,15 +1,16 @@
 'use strict';
 
-const express   = require('express');
-const Database  = require('better-sqlite3');
-const bcrypt    = require('bcrypt');
-const jwt       = require('jsonwebtoken');
-const rateLimit = require('express-rate-limit');
-const path      = require('path');
+const express      = require('express');
+const Database     = require('better-sqlite3');
+const bcrypt       = require('bcrypt');
+const rateLimit    = require('express-rate-limit');
+const session      = require('express-session');
+const SQLiteStore  = require('connect-sqlite3')(session);
+const path         = require('path');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'pix-secret-key-change-in-production';
-const PORT       = process.env.PORT || 3000;
-const DB_PATH    = path.join(__dirname, 'dodo.db');
+const SESSION_SECRET = process.env.SESSION_SECRET || 'pix-session-secret-change-in-production';
+const PORT           = process.env.PORT || 3000;
+const DB_PATH        = path.join(__dirname, 'dodo.db');
 
 // ── Database ───────────────────────────────────────────────────────────────────
 const db = new Database(DB_PATH);
@@ -107,14 +108,14 @@ if (!existingSuperadmin) {
 
 // ── Middleware ─────────────────────────────────────────────────────────────────
 function authMiddleware(req, res, next) {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Unauthorized' });
-  try {
-    req.user = jwt.verify(token, JWT_SECRET);
-    next();
-  } catch {
-    res.status(401).json({ error: 'Invalid token' });
-  }
+  if (!req.session.userId) return res.status(401).json({ error: 'Unauthorized' });
+  req.user = {
+    id:    req.session.userId,
+    email: req.session.userEmail,
+    role:  req.session.userRole,
+    name:  req.session.userName,
+  };
+  next();
 }
 
 function requireRole(...roles) {
@@ -175,6 +176,18 @@ function fmtPizzeria(p) {
 // ── Express ────────────────────────────────────────────────────────────────────
 const app = express();
 app.use(express.json());
+app.use(session({
+  store: new SQLiteStore({ db: 'sessions.db', dir: __dirname }),
+  secret: SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  name: 'pix.sid',
+  cookie: {
+    secure:   process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge:   7 * 24 * 60 * 60 * 1000,
+  },
+}));
 
 // ── Auth ───────────────────────────────────────────────────────────────────────
 const loginLimiter = rateLimit({
@@ -193,12 +206,22 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
     return res.status(401).json({ error: 'Неверный email или пароль' });
   }
 
-  const token = jwt.sign(
-    { id: user.id, email: user.email, role: user.role, name: user.name },
-    JWT_SECRET,
-    { expiresIn: '24h' }
-  );
-  res.json({ token, user: fmtUser(user) });
+  req.session.regenerate(err => {
+    if (err) return res.status(500).json({ error: 'Ошибка сессии' });
+    req.session.userId    = user.id;
+    req.session.userEmail = user.email;
+    req.session.userRole  = user.role;
+    req.session.userName  = user.name;
+    res.json({ user: fmtUser(user) });
+  });
+});
+
+// POST /api/auth/logout
+app.post('/api/auth/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.clearCookie('pix.sid');
+    res.json({ success: true });
+  });
 });
 
 // GET /api/auth/me

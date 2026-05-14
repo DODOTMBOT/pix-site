@@ -18,10 +18,6 @@ export interface PizzeriaShort {
 
 const API_URL = '/api';
 
-export function getToken(): string | null {
-  return localStorage.getItem('pix_token');
-}
-
 export function getUser(): User | null {
   const raw = localStorage.getItem('pix_user');
   if (!raw) return null;
@@ -29,7 +25,7 @@ export function getUser(): User | null {
 }
 
 export function isAuthenticated(): boolean {
-  return !!getToken();
+  return !!getUser();
 }
 
 export function isSuperAdmin(): boolean {
@@ -61,19 +57,18 @@ export function roleLabel(role: Role): string {
 
 export async function login(email: string, password: string): Promise<User> {
   const res = await fetch(`${API_URL}/auth/login`, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ email, password }),
+    method:      'POST',
+    credentials: 'include',
+    headers:     { 'Content-Type': 'application/json' },
+    body:        JSON.stringify({ email, password }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { error?: string }).error || 'Ошибка входа');
   }
   const data = await res.json() as {
-    token: string;
-    user:  { id: number; email: string; name: string; role: Role; job_title: string | null };
+    user: { id: number; email: string; name: string; role: Role; job_title: string | null };
   };
-  localStorage.setItem('pix_token', data.token);
   const user: User = {
     id:       data.user.id,
     email:    data.user.email,
@@ -108,16 +103,20 @@ export async function fetchMe(): Promise<{ user: User; pizzerias: PizzeriaShort[
 }
 
 export function logout(): void {
-  localStorage.removeItem('pix_token');
   localStorage.removeItem('pix_user');
+  // Fire-and-forget: destroy the server session. Use plain fetch to avoid
+  // triggering the 401 interceptor in authFetch if the session is already gone.
+  fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' }).catch(() => {});
 }
 
+// All authenticated API calls. Sends the session cookie automatically.
+// On 401 (expired/invalid session) clears local state and redirects to /login.
 export async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const res = await fetch(url, {
     ...options,
+    credentials: 'include',
     headers: {
-      'Content-Type':  'application/json',
-      'Authorization': `Bearer ${getToken() ?? ''}`,
+      'Content-Type': 'application/json',
       ...(options.headers as Record<string, string> ?? {}),
     },
   });

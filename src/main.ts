@@ -1,7 +1,7 @@
 import './styles/global.css';
 import './styles/components.css';
 import { initTheme }    from './services/theme';
-import { getToken, logout } from './services/auth';
+import { getUser, logout } from './services/auth';
 import { loadContext }  from './services/pizzeriaContext';
 import { renderHeader } from './components/header';
 import { renderFooter } from './components/footer';
@@ -25,7 +25,7 @@ layout.appendChild(renderFooter());
 app.appendChild(layout);
 
 (async () => {
-  if (getToken()) {
+  if (getUser()) {
     try {
       await loadContext();
     } catch {
