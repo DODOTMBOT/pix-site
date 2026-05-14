@@ -175,6 +175,7 @@ function fmtPizzeria(p) {
 
 // ── Express ────────────────────────────────────────────────────────────────────
 const app = express();
+app.set('trust proxy', 1);
 app.use(express.json());
 app.use(session({
   store: new SQLiteStore({ db: 'sessions.db', dir: __dirname }),
@@ -183,8 +184,9 @@ app.use(session({
   saveUninitialized: false,
   name: 'pix.sid',
   cookie: {
-    secure:   process.env.NODE_ENV === 'production',
+    secure:   false,
     httpOnly: true,
+    sameSite: 'lax',
     maxAge:   7 * 24 * 60 * 60 * 1000,
   },
 }));
