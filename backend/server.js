@@ -241,13 +241,9 @@ app.get('/api/auth/me', authMiddleware, (req, res) => {
   const user = db.prepare("SELECT * FROM users WHERE id = ?").get(req.user.id);
   if (!user) return res.status(404).json({ error: 'Not found' });
 
-  const ids = getUserPizzeriaIds(user.id, user.role);
-  const pizzerias = ids.length > 0
-    ? db.prepare(
-        `SELECT id, name, city, street, house FROM pizzerias
-         WHERE id IN (${ids.map(() => '?').join(',')}) AND is_archived = 0`
-      ).all(...ids)
-    : [];
+  const pizzerias = db.prepare(
+    "SELECT id, name, city, street, house FROM pizzerias WHERE is_archived = 0 ORDER BY name"
+  ).all();
 
   res.json({ user: fmtUser(user), pizzerias });
 });
