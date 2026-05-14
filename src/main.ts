@@ -1,7 +1,8 @@
 import './styles/global.css';
 import './styles/components.css';
-import { initTheme }   from './services/theme';
-import { loadContext } from './services/pizzeriaContext';
+import { initTheme }     from './services/theme';
+import { loadContext }   from './services/pizzeriaContext';
+import { rebuildHeader } from './components/header';
 import { renderHeader } from './components/header';
 import { renderFooter } from './components/footer';
 import { initRouter }   from './router';
@@ -30,5 +31,6 @@ app.appendChild(layout);
     // authFetch handles 401 (expired/missing session) by redirecting to /login.
     // Other failures (server down, parse error) are surfaced per-page.
   }
+  rebuildHeader();
   initRouter(main);
 })();
