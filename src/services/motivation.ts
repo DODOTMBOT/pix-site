@@ -10,6 +10,7 @@ export interface MotivationItem {
   weight:       number;
   goal:         string | null;
   has_wow_goal: boolean;
+  wow_goal:     string | null;
 }
 
 export interface MotivationBlock {
@@ -19,7 +20,7 @@ export interface MotivationBlock {
   items:  MotivationItem[];
 }
 
-export interface CriticalFactor { id: number; description: string; }
+export interface CriticalFactor { id: number; name: string; indicator: string | null; }
 
 export interface MotivationData {
   fund:     MotivationFund;
@@ -61,7 +62,7 @@ export async function deleteBlock(id: number): Promise<void> {
 
 export async function createItem(
   blockId: number,
-  data: { name: string; weight: number; goal: string | null; has_wow_goal: boolean },
+  data: { name: string; weight: number; goal: string | null; has_wow_goal: boolean; wow_goal: string | null },
 ): Promise<MotivationItem> {
   const r = await authFetch(`${base()}/blocks/${blockId}/items`, { method: 'POST', body: JSON.stringify(data) });
   if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error((e as any).error || 'Ошибка'); }
@@ -70,7 +71,7 @@ export async function createItem(
 
 export async function updateItem(
   id: number,
-  data: { name: string; weight: number; goal: string | null; has_wow_goal: boolean },
+  data: { name: string; weight: number; goal: string | null; has_wow_goal: boolean; wow_goal: string | null },
 ): Promise<void> {
   const r = await authFetch(`${base()}/items/${id}`, { method: 'PUT', body: JSON.stringify(data) });
   if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error((e as any).error || 'Ошибка'); }
@@ -80,8 +81,8 @@ export async function deleteItem(id: number): Promise<void> {
   await authFetch(`${base()}/items/${id}`, { method: 'DELETE' });
 }
 
-export async function createCritical(description: string): Promise<CriticalFactor> {
-  const r = await authFetch(`${base()}/critical`, { method: 'POST', body: JSON.stringify({ description }) });
+export async function createCritical(data: { name: string; indicator: string | null }): Promise<CriticalFactor> {
+  const r = await authFetch(`${base()}/critical`, { method: 'POST', body: JSON.stringify(data) });
   if (!r.ok) throw new Error('Ошибка');
   return r.json();
 }

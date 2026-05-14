@@ -32,11 +32,11 @@ export function renderMotivation(): HTMLElement {
   function render(): void {
     if (!data) return;
     const wrap = document.createElement('div');
-    wrap.style.cssText = 'max-width:860px;display:flex;flex-direction:column;gap:28px;';
+    wrap.style.cssText = 'max-width:900px;display:flex;flex-direction:column;gap:24px;';
 
     const hdr = document.createElement('div');
     hdr.innerHTML = `
-      <h1 style="font-size:24px;font-weight:700;letter-spacing:-0.02em;margin-bottom:4px;">Мотивация</h1>
+      <h1 style="font-size:24px;font-weight:700;letter-spacing:-0.02em;margin-bottom:2px;">Мотивация</h1>
       <div style="font-size:13px;color:var(--text-muted);">${activePiz!.name}</div>
     `;
     wrap.appendChild(hdr);
@@ -50,45 +50,46 @@ export function renderMotivation(): HTMLElement {
 
   function buildFundSection(fund: { premium: number; wow: number }): HTMLElement {
     const section = document.createElement('div');
-    section.appendChild(sectionLabel('ФОНД ПРЕМИИ'));
+    section.appendChild(secLabel('ФОНД ПРЕМИИ'));
 
     const card = document.createElement('div');
-    card.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:20px 24px;box-shadow:var(--shadow-sm);';
+    card.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:18px 22px;box-shadow:var(--shadow-sm);';
 
     const row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap;';
+    row.style.cssText = 'display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;';
 
-    const premField = moneyField('Премиальный фонд', fund.premium, !writable);
-    const wowField  = moneyField('Фонд WOW', fund.wow, !writable);
+    const premFld = fundField('Премиальный фонд', fund.premium, !writable, '#FF6900');
+    const wowFld  = fundField('Фонд WOW', fund.wow, !writable, '#f59e0b');
 
-    const totalWrap = document.createElement('div');
-    totalWrap.style.cssText = 'flex:1;min-width:130px;padding-bottom:2px;';
+    const totalBox = document.createElement('div');
+    totalBox.style.cssText = 'flex:1;min-width:120px;padding-bottom:1px;';
 
     function refreshTotal(): void {
-      const p = parseInt(premField.inp.value) || 0;
-      const w = parseInt(wowField.inp.value)  || 0;
-      totalWrap.innerHTML = `
-        <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Итого</div>
-        <div style="font-size:24px;font-weight:800;color:var(--text-primary);">${fmtN(p + w)} ₽</div>
+      const p = parseMoney(premFld.inp.value);
+      const w = parseMoney(wowFld.inp.value);
+      totalBox.innerHTML = `
+        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px;">Итого</div>
+        <div style="font-size:22px;font-weight:800;color:var(--text-primary);letter-spacing:-0.02em;">${fmtN(p + w)} ₽</div>
       `;
     }
-    premField.inp.addEventListener('input', refreshTotal);
-    wowField.inp.addEventListener('input', refreshTotal);
+
+    premFld.inp.addEventListener('input', refreshTotal);
+    wowFld.inp.addEventListener('input', refreshTotal);
     refreshTotal();
 
-    row.appendChild(premField.el);
-    row.appendChild(wowField.el);
-    row.appendChild(totalWrap);
+    row.appendChild(premFld.el);
+    row.appendChild(wowFld.el);
+    row.appendChild(totalBox);
 
     if (writable) {
       const saveBtn = document.createElement('button');
       saveBtn.className = 'btn btn-primary';
-      saveBtn.style.cssText = 'padding:10px 20px;align-self:flex-end;';
+      saveBtn.style.cssText = 'padding:9px 20px;align-self:flex-end;';
       saveBtn.textContent = 'Сохранить';
       saveBtn.addEventListener('click', async () => {
         saveBtn.disabled = true; saveBtn.textContent = '...';
         try {
-          await saveFund({ premium: parseInt(premField.inp.value) || 0, wow: parseInt(wowField.inp.value) || 0 });
+          await saveFund({ premium: parseMoney(premFld.inp.value), wow: parseMoney(wowFld.inp.value) });
           await load();
         } catch {
           saveBtn.textContent = 'Ошибка';
@@ -107,128 +108,139 @@ export function renderMotivation(): HTMLElement {
 
   function buildBlocksSection(blocks: MotivationBlock[], premFund: number, wowFund: number): HTMLElement {
     const section = document.createElement('div');
-
-    const blockSum    = round1(blocks.reduce((s, b) => s + b.weight, 0));
-    const blockSumOk  = blocks.length === 0 || Math.abs(blockSum - 100) < 0.01;
+    const blockSum   = round1(blocks.reduce((s, b) => s + b.weight, 0));
+    const blockSumOk = blocks.length === 0 || Math.abs(blockSum - 100) < 0.01;
 
     const titleRow = document.createElement('div');
     titleRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;';
 
     const left = document.createElement('div');
     left.style.cssText = 'display:flex;align-items:center;gap:10px;';
-    left.appendChild(sectionLabel('БЛОКИ И ПУНКТЫ'));
-
+    left.appendChild(secLabel('БЛОКИ И ПУНКТЫ'));
     if (blocks.length > 0) {
-      const badge = document.createElement('span');
-      badge.style.cssText = sumBadgeStyle(blockSumOk);
-      badge.textContent = `Σ блоков = ${blockSum}%${blockSumOk ? ' ✓' : ' — должно быть 100%'}`;
+      const badge = span(sumStyle(blockSumOk), `Σ = ${blockSum}%${blockSumOk ? ' ✓' : ' ✗ (нужно 100%)'}`);
       left.appendChild(badge);
     }
-
     titleRow.appendChild(left);
 
     if (writable) {
-      const addBtn = document.createElement('button');
-      addBtn.className = 'btn btn-primary';
-      addBtn.style.cssText = 'font-size:13px;padding:7px 16px;';
-      addBtn.textContent = '+ Блок';
-      addBtn.addEventListener('click', () => showBlockModal(null, premFund, blocks));
-      titleRow.appendChild(addBtn);
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-primary';
+      btn.style.cssText = 'font-size:13px;padding:6px 14px;';
+      btn.textContent = '+ Блок';
+      btn.addEventListener('click', () => showBlockModal(null, premFund, blocks));
+      titleRow.appendChild(btn);
     }
-
     section.appendChild(titleRow);
 
     if (blocks.length === 0) {
       const empty = document.createElement('div');
-      empty.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:40px;text-align:center;color:var(--text-muted);font-size:14px;';
+      empty.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:36px;text-align:center;color:var(--text-muted);font-size:13px;';
       empty.textContent = writable ? 'Блоков нет. Добавьте первый.' : 'Блоков нет.';
       section.appendChild(empty);
       return section;
     }
 
-    blocks.forEach(block => section.appendChild(buildBlockCard(block, premFund, wowFund)));
+    blocks.forEach(b => section.appendChild(buildBlockCard(b, premFund, wowFund)));
     return section;
   }
 
   function buildBlockCard(block: MotivationBlock, premFund: number, wowFund: number): HTMLElement {
-    const blockAmt   = Math.round((block.weight / 100) * premFund);
-    const wowAmt     = Math.round((block.weight / 100) * wowFund);
-    const itemSum    = round1(block.items.reduce((s, i) => s + i.weight, 0));
-    const itemSumOk  = block.items.length === 0 || Math.abs(itemSum - 100) < 0.01;
+    const blockAmt  = Math.round((block.weight / 100) * premFund);
+    const wowAmt    = wowFund > 0 ? Math.round((block.weight / 100) * wowFund) : 0;
+    const itemSum   = round1(block.items.reduce((s, i) => s + i.weight, 0));
+    const itemSumOk = block.items.length === 0 || Math.abs(itemSum - 100) < 0.01;
 
     const card = document.createElement('div');
-    card.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;box-shadow:var(--shadow-sm);margin-bottom:12px;';
+    card.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;box-shadow:var(--shadow-sm);margin-bottom:10px;';
 
-    // Block header
+    // ── Block header bar ──────────────────────────────────────────────────────
     const hdr = document.createElement('div');
-    hdr.style.cssText = 'padding:12px 18px;background:var(--bg-secondary);display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);flex-wrap:wrap;';
+    hdr.style.cssText = 'padding:10px 16px;background:var(--bg-secondary);display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);';
 
     const nameEl = document.createElement('div');
-    nameEl.style.cssText = 'font-size:15px;font-weight:700;color:var(--text-primary);flex:1;min-width:120px;';
+    nameEl.style.cssText = 'font-size:14px;font-weight:700;color:var(--text-primary);flex:1;';
     nameEl.textContent = block.name;
 
-    const wBadge = document.createElement('span');
-    wBadge.style.cssText = 'font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--accent-light);color:var(--accent);';
-    wBadge.textContent = `${block.weight}%`;
-
-    const amtEl = document.createElement('span');
-    amtEl.style.cssText = 'font-size:14px;font-weight:700;color:var(--text-primary);';
-    amtEl.textContent = `${fmtN(blockAmt)} ₽`;
-
     hdr.appendChild(nameEl);
-    hdr.appendChild(wBadge);
-    hdr.appendChild(amtEl);
-
-    if (wowFund > 0) {
-      const wowEl = document.createElement('span');
-      wowEl.style.cssText = 'font-size:12px;color:#f59e0b;font-weight:600;';
-      wowEl.textContent = `WOW: ${fmtN(wowAmt)} ₽`;
-      hdr.appendChild(wowEl);
-    }
+    hdr.appendChild(span('font-size:12px;font-weight:700;padding:2px 9px;border-radius:20px;background:var(--accent-light);color:var(--accent);', `${block.weight}%`));
+    hdr.appendChild(span('font-size:13px;font-weight:700;color:var(--text-primary);min-width:80px;text-align:right;', `${fmtN(blockAmt)} ₽`));
+    if (wowFund > 0) hdr.appendChild(span('font-size:11px;color:#f59e0b;font-weight:600;', `WOW: ${fmtN(wowAmt)} ₽`));
 
     if (writable) {
-      const editBtn = document.createElement('button');
-      editBtn.className = 'btn btn-outline';
-      editBtn.style.cssText = 'padding:4px 10px;font-size:12px;';
-      editBtn.textContent = 'Изменить';
-      editBtn.addEventListener('click', () => showBlockModal(block, premFund, data!.blocks));
-
-      const delBtn = document.createElement('button');
-      delBtn.className = 'btn btn-outline';
-      delBtn.style.cssText = 'padding:4px 10px;font-size:12px;color:var(--text-muted);';
-      delBtn.textContent = 'Удалить';
-      delBtn.addEventListener('click', async () => {
+      const editBtn = btn14('Изменить', () => showBlockModal(block, premFund, data!.blocks));
+      const delBtn  = btn14('✕', async () => {
         if (!confirm(`Удалить блок «${block.name}»? Все пункты будут удалены.`)) return;
         delBtn.disabled = true;
         await deleteBlock(block.id);
         await load();
-      });
-
-      hdr.appendChild(editBtn);
-      hdr.appendChild(delBtn);
+      }, 'color:var(--text-muted);');
+      hdr.append(editBtn, delBtn);
     }
-
     card.appendChild(hdr);
 
-    // Items
-    if (block.items.length === 0) {
+    // ── Items table ───────────────────────────────────────────────────────────
+    if (block.items.length > 0) {
+      const tbl = document.createElement('table');
+      tbl.style.cssText = 'width:100%;border-collapse:collapse;font-size:13px;';
+
+      block.items.forEach((item, i) => {
+        const itemAmt = Math.round((item.weight / 100) * blockAmt);
+        const tr = document.createElement('tr');
+        tr.style.cssText = `border-bottom:1px solid var(--border);${i % 2 !== 0 ? 'background:var(--bg-secondary);' : ''}`;
+
+        let html = `
+          <td style="padding:8px 8px 8px 20px;width:28px;">
+            <span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent);opacity:0.35;vertical-align:middle;"></span>
+          </td>
+          <td style="padding:8px 6px;font-weight:600;color:var(--text-primary);">${esc(item.name)}</td>
+          <td style="padding:8px 6px;color:var(--text-muted);font-size:12px;white-space:nowrap;">
+            ${item.goal ? `Цель: ${esc(item.goal)}` : ''}
+          </td>
+          <td style="padding:8px 6px;white-space:nowrap;">
+            ${item.has_wow_goal ? `<span style="font-size:11px;font-weight:700;padding:1px 7px;border-radius:20px;background:#f59e0b18;color:#f59e0b;">WOW${item.wow_goal ? `: ${esc(item.wow_goal)}` : ''}</span>` : ''}
+          </td>
+          <td style="padding:8px 6px;text-align:right;white-space:nowrap;">
+            <span style="font-size:11px;font-weight:600;padding:1px 7px;border-radius:20px;background:var(--bg-hover);color:var(--text-muted);">${item.weight}%</span>
+          </td>
+          <td style="padding:8px 6px;text-align:right;font-weight:700;color:var(--text-primary);white-space:nowrap;min-width:74px;">${fmtN(itemAmt)} ₽</td>
+        `;
+        tr.innerHTML = html;
+
+        if (writable) {
+          const td = document.createElement('td');
+          td.style.cssText = 'padding:6px 12px 6px 4px;white-space:nowrap;text-align:right;';
+          const e = btn14('Изм.', () => showItemModal(item, block, blockAmt));
+          const d = btn14('✕', async () => {
+            if (!confirm(`Удалить пункт «${item.name}»?`)) return;
+            d.disabled = true;
+            await deleteItem(item.id);
+            await load();
+          }, 'color:var(--text-muted);');
+          td.append(e, d);
+          tr.appendChild(td);
+        }
+
+        tbl.appendChild(tr);
+      });
+
+      card.appendChild(tbl);
+    } else {
       const empty = document.createElement('div');
-      empty.style.cssText = 'padding:14px 20px;color:var(--text-muted);font-size:13px;';
+      empty.style.cssText = 'padding:12px 20px;color:var(--text-muted);font-size:12px;';
       empty.textContent = 'Пунктов нет.';
       card.appendChild(empty);
-    } else {
-      block.items.forEach((item, i) => card.appendChild(buildItemRow(item, block, blockAmt, i)));
     }
 
-    // Footer
+    // ── Footer ────────────────────────────────────────────────────────────────
     const footer = document.createElement('div');
-    footer.style.cssText = 'padding:9px 18px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg-secondary);';
+    footer.style.cssText = 'padding:7px 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg-secondary);';
 
     if (block.items.length > 0) {
-      const sumEl = document.createElement('span');
-      sumEl.style.cssText = `font-size:12px;font-weight:600;${itemSumOk ? 'color:var(--accent);' : 'color:#ef4444;'}`;
-      sumEl.textContent = `Σ пунктов = ${itemSum}%${itemSumOk ? ' ✓' : ' — должно быть 100%'}`;
-      footer.appendChild(sumEl);
+      footer.appendChild(span(
+        `font-size:11px;font-weight:600;${itemSumOk ? 'color:var(--accent);' : 'color:#ef4444;'}`,
+        `Σ пунктов = ${itemSum}%${itemSumOk ? ' ✓' : ' — должно быть 100%'}`,
+      ));
     } else {
       footer.appendChild(document.createElement('span'));
     }
@@ -236,80 +248,13 @@ export function renderMotivation(): HTMLElement {
     if (writable) {
       const addBtn = document.createElement('button');
       addBtn.className = 'btn btn-outline';
-      addBtn.style.cssText = 'font-size:12px;padding:5px 12px;';
+      addBtn.style.cssText = 'font-size:11px;padding:4px 10px;';
       addBtn.textContent = '+ Пункт';
       addBtn.addEventListener('click', () => showItemModal(null, block, blockAmt));
       footer.appendChild(addBtn);
     }
-
     card.appendChild(footer);
     return card;
-  }
-
-  function buildItemRow(item: MotivationItem, block: MotivationBlock, blockAmt: number, idx: number): HTMLElement {
-    const itemAmt = Math.round((item.weight / 100) * blockAmt);
-
-    const row = document.createElement('div');
-    row.style.cssText = `padding:10px 18px 10px 28px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--border);${idx % 2 !== 0 ? 'background:var(--bg-secondary);' : ''}`;
-
-    const dot = document.createElement('span');
-    dot.style.cssText = 'width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0;opacity:0.4;margin-top:1px;';
-
-    const nameEl = document.createElement('div');
-    nameEl.style.cssText = 'font-size:13px;font-weight:600;color:var(--text-primary);flex:1;min-width:100px;';
-    nameEl.textContent = item.name;
-
-    const wBadge = document.createElement('span');
-    wBadge.style.cssText = 'font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--bg-hover);color:var(--text-muted);flex-shrink:0;';
-    wBadge.textContent = `${item.weight}%`;
-
-    const amtEl = document.createElement('span');
-    amtEl.style.cssText = 'font-size:13px;font-weight:700;color:var(--text-primary);flex-shrink:0;min-width:76px;text-align:right;';
-    amtEl.textContent = `${fmtN(itemAmt)} ₽`;
-
-    row.appendChild(dot);
-    row.appendChild(nameEl);
-
-    if (item.goal) {
-      const goalEl = document.createElement('span');
-      goalEl.style.cssText = 'font-size:12px;color:var(--text-muted);flex-shrink:0;white-space:nowrap;';
-      goalEl.textContent = `Цель: ${item.goal}`;
-      row.appendChild(goalEl);
-    }
-
-    if (item.has_wow_goal) {
-      const wowBadge = document.createElement('span');
-      wowBadge.style.cssText = 'font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:#f59e0b18;color:#f59e0b;flex-shrink:0;';
-      wowBadge.textContent = 'WOW';
-      row.appendChild(wowBadge);
-    }
-
-    row.appendChild(wBadge);
-    row.appendChild(amtEl);
-
-    if (writable) {
-      const editBtn = document.createElement('button');
-      editBtn.className = 'btn btn-outline';
-      editBtn.style.cssText = 'padding:3px 8px;font-size:11px;flex-shrink:0;';
-      editBtn.textContent = 'Изменить';
-      editBtn.addEventListener('click', () => showItemModal(item, block, blockAmt));
-
-      const delBtn = document.createElement('button');
-      delBtn.className = 'btn btn-outline';
-      delBtn.style.cssText = 'padding:3px 8px;font-size:11px;flex-shrink:0;color:var(--text-muted);';
-      delBtn.textContent = '✕';
-      delBtn.addEventListener('click', async () => {
-        if (!confirm(`Удалить пункт «${item.name}»?`)) return;
-        delBtn.disabled = true;
-        await deleteItem(item.id);
-        await load();
-      });
-
-      row.appendChild(editBtn);
-      row.appendChild(delBtn);
-    }
-
-    return row;
   }
 
   // ── Critical ─────────────────────────────────────────────────────────────────
@@ -319,27 +264,20 @@ export function renderMotivation(): HTMLElement {
 
     const titleRow = document.createElement('div');
     titleRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;';
-
     const left = document.createElement('div');
     left.style.cssText = 'display:flex;align-items:center;gap:10px;';
-    left.appendChild(sectionLabel('КРИТИЧЕСКИЕ ФАКТОРЫ'));
-
-    const hint = document.createElement('span');
-    hint.style.cssText = 'font-size:11px;color:#ef4444;font-weight:600;';
-    hint.textContent = 'при наступлении любого — вся премия обнуляется';
-    left.appendChild(hint);
-
+    left.appendChild(secLabel('КРИТИЧЕСКИЕ ФАКТОРЫ'));
+    left.appendChild(span('font-size:11px;color:#ef4444;font-weight:600;', '⚠ при наступлении любого вся премия обнуляется'));
     titleRow.appendChild(left);
 
     if (writable) {
       const addBtn = document.createElement('button');
       addBtn.className = 'btn btn-outline';
-      addBtn.style.cssText = 'font-size:13px;padding:7px 16px;';
+      addBtn.style.cssText = 'font-size:13px;padding:6px 14px;';
       addBtn.textContent = '+ Добавить';
       addBtn.addEventListener('click', () => showCriticalModal());
       titleRow.appendChild(addBtn);
     }
-
     section.appendChild(titleRow);
 
     const card = document.createElement('div');
@@ -347,41 +285,52 @@ export function renderMotivation(): HTMLElement {
 
     if (items.length === 0) {
       const empty = document.createElement('div');
-      empty.style.cssText = 'padding:28px 20px;text-align:center;color:var(--text-muted);font-size:13px;';
+      empty.style.cssText = 'padding:24px;text-align:center;color:var(--text-muted);font-size:13px;';
       empty.textContent = 'Критических факторов нет.';
       card.appendChild(empty);
     } else {
+      const tbl = document.createElement('table');
+      tbl.style.cssText = 'width:100%;border-collapse:collapse;font-size:13px;';
+
+      // Header
+      const thead = document.createElement('thead');
+      thead.innerHTML = `<tr style="border-bottom:1px solid var(--border);">
+        <th style="padding:8px 10px 8px 16px;text-align:left;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;width:40%;">Фактор</th>
+        <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;">Показатель критичности</th>
+        ${writable ? '<th style="width:70px;"></th>' : ''}
+      </tr>`;
+      tbl.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
       items.forEach((item, i) => {
-        const row = document.createElement('div');
-        row.style.cssText = `padding:12px 16px;display:flex;align-items:flex-start;gap:10px;${i > 0 ? 'border-top:1px solid var(--border);' : ''}${i % 2 !== 0 ? 'background:var(--bg-secondary);' : ''}`;
+        const tr = document.createElement('tr');
+        tr.style.cssText = `border-bottom:1px solid var(--border);${i % 2 !== 0 ? 'background:var(--bg-secondary);' : ''}`;
 
-        const icon = document.createElement('span');
-        icon.style.cssText = 'color:#ef4444;font-size:15px;flex-shrink:0;margin-top:1px;';
-        icon.textContent = '⚠';
-
-        const desc = document.createElement('div');
-        desc.style.cssText = 'font-size:13px;color:var(--text-primary);flex:1;line-height:1.4;';
-        desc.textContent = item.description;
-
-        row.appendChild(icon);
-        row.appendChild(desc);
+        let html = `
+          <td style="padding:9px 10px 9px 16px;font-weight:600;color:var(--text-primary);">
+            <span style="color:#ef4444;margin-right:6px;">⚠</span>${esc(item.name)}
+          </td>
+          <td style="padding:9px 10px;color:var(--text-muted);">${item.indicator ? esc(item.indicator) : '—'}</td>
+        `;
+        tr.innerHTML = html;
 
         if (writable) {
-          const delBtn = document.createElement('button');
-          delBtn.className = 'btn btn-outline';
-          delBtn.style.cssText = 'padding:4px 10px;font-size:12px;color:var(--text-muted);flex-shrink:0;';
-          delBtn.textContent = 'Удалить';
-          delBtn.addEventListener('click', async () => {
+          const td = document.createElement('td');
+          td.style.cssText = 'padding:6px 12px;text-align:right;';
+          const d = btn14('Удалить', async () => {
             if (!confirm('Удалить критический фактор?')) return;
-            delBtn.disabled = true;
+            d.disabled = true;
             await deleteCritical(item.id);
             await load();
-          });
-          row.appendChild(delBtn);
+          }, 'color:var(--text-muted);');
+          td.appendChild(d);
+          tr.appendChild(td);
         }
-
-        card.appendChild(row);
+        tbody.appendChild(tr);
       });
+
+      tbl.appendChild(tbody);
+      card.appendChild(tbl);
     }
 
     section.appendChild(card);
@@ -395,34 +344,30 @@ export function renderMotivation(): HTMLElement {
     const remaining = round1(Math.max(0, 100 - usedPct));
 
     const { overlay, modal, close } = baseModal(block ? 'Изменить блок' : 'Новый блок');
+    const nameInp   = mField(modal, 'Название блока *', 'text', block?.name ?? '', 'Рейтинг, Прибыль, Качество...');
+    const weightInp = mField(modal, `Вес блока (% из premium-фонда) *`, 'number', String(block?.weight ?? remaining), '');
+    weightInp.min = '0'; weightInp.max = '100'; weightInp.step = '0.1';
 
-    const nameInp   = field(modal, 'Название блока *', 'text', block?.name ?? '', 'Рейтинг, Прибыль, Качество...');
-    const weightInp = field(modal, 'Вес блока (% от премиального фонда) *', 'number', String(block?.weight ?? remaining), '');
-    weightInp.min   = '0'; weightInp.max = '100'; weightInp.step = '0.1';
-
-    const hint = document.createElement('div');
-    hint.style.cssText = 'font-size:11px;color:var(--text-muted);margin-top:-8px;';
-    hint.textContent = `Доступно: ${remaining}% · Фонд: ${fmtN(premFund)} ₽`;
-    modal.insertBefore(hint, modal.lastElementChild);
-
-    const calcEl = document.createElement('div');
-    calcEl.style.cssText = 'font-size:14px;font-weight:700;color:var(--accent);margin-top:-4px;';
-    modal.insertBefore(calcEl, modal.lastElementChild);
+    const calc = mHint(modal, '');
+    const hint = mHint(modal, `Доступно: ${remaining}% · Фонд: ${fmtN(premFund)} ₽`);
+    hint.style.order = '-1';
 
     function refreshCalc(): void {
       const w = parseFloat(weightInp.value) || 0;
-      calcEl.textContent = `= ${fmtN(Math.round(w / 100 * premFund))} ₽ из фонда`;
+      calc.textContent = `= ${fmtN(Math.round(w / 100 * premFund))} ₽ из фонда`;
+      calc.style.color = 'var(--accent)';
+      calc.style.fontWeight = '700';
     }
     weightInp.addEventListener('input', refreshCalc);
     refreshCalc();
 
     modal.querySelector('#m-save')!.addEventListener('click', async () => {
-      const errEl   = modal.querySelector<HTMLElement>('#m-err')!;
+      const errEl = modal.querySelector<HTMLElement>('#m-err')!;
       const saveBtn = modal.querySelector<HTMLButtonElement>('#m-save')!;
-      const name    = nameInp.value.trim();
-      const weight  = parseFloat(weightInp.value) || 0;
-      if (!name)        { showErr(errEl, 'Название обязательно'); return; }
-      if (weight <= 0)  { showErr(errEl, 'Вес должен быть больше 0'); return; }
+      const name   = nameInp.value.trim();
+      const weight = parseFloat(weightInp.value) || 0;
+      if (!name)       { showErr(errEl, 'Название обязательно'); return; }
+      if (weight <= 0) { showErr(errEl, 'Вес должен быть больше 0'); return; }
       errEl.style.display = 'none';
       saveBtn.disabled = true; saveBtn.textContent = 'Сохранение...';
       try {
@@ -446,44 +391,56 @@ export function renderMotivation(): HTMLElement {
     const { overlay, modal, close } = baseModal(item ? 'Изменить пункт' : 'Новый пункт');
 
     const sub = document.createElement('div');
-    sub.style.cssText = 'font-size:12px;color:var(--text-muted);margin-top:-14px;margin-bottom:16px;';
+    sub.style.cssText = 'font-size:12px;color:var(--text-muted);margin-top:-10px;';
     sub.textContent = `Блок: ${block.name} · ${fmtN(blockAmt)} ₽`;
-    modal.insertBefore(sub, modal.firstChild!.nextSibling);
+    modal.insertBefore(sub, modal.children[1]);
 
-    const nameInp   = field(modal, 'Название пункта *', 'text', item?.name ?? '', 'Производительность, Выручка...');
-    const weightInp = field(modal, 'Вес (% от блока) *', 'number', String(item?.weight ?? remaining), '');
+    const nameInp   = mField(modal, 'Название пункта *', 'text', item?.name ?? '', 'Производительность, Выручка...');
+    const weightInp = mField(modal, 'Вес (% от блока) *', 'number', String(item?.weight ?? remaining), '');
     weightInp.min = '0'; weightInp.max = '100'; weightInp.step = '0.1';
+    mHint(modal, `Доступно: ${remaining}%`);
 
-    const hint2 = document.createElement('div');
-    hint2.style.cssText = 'font-size:11px;color:var(--text-muted);margin-top:-8px;';
-    hint2.textContent = `Доступно: ${remaining}%`;
-    modal.insertBefore(hint2, modal.lastElementChild);
-
-    const calcEl2 = document.createElement('div');
-    calcEl2.style.cssText = 'font-size:14px;font-weight:700;color:var(--accent);margin-top:-4px;';
-    modal.insertBefore(calcEl2, modal.lastElementChild);
-
-    function refreshCalc2(): void {
+    const calc = mHint(modal, '');
+    function refreshCalc(): void {
       const w = parseFloat(weightInp.value) || 0;
-      calcEl2.textContent = `= ${fmtN(Math.round(w / 100 * blockAmt))} ₽`;
+      calc.textContent = `= ${fmtN(Math.round(w / 100 * blockAmt))} ₽`;
+      calc.style.color = 'var(--accent)'; calc.style.fontWeight = '700';
     }
-    weightInp.addEventListener('input', refreshCalc2);
-    refreshCalc2();
+    weightInp.addEventListener('input', refreshCalc);
+    refreshCalc();
 
-    const goalInp = field(modal, 'Цель (целевой показатель)', 'text', item?.goal ?? '', '95%, 8 мин, 1 000 000 ₽...');
+    const goalInp = mField(modal, 'Цель (целевой показатель)', 'text', item?.goal ?? '', '95%, 8 мин, 1 000 000 ₽...');
 
+    // WOW checkbox + conditional wow_goal input
     const wowRow = document.createElement('div');
     wowRow.style.cssText = 'display:flex;align-items:center;gap:10px;';
     const wowCb = document.createElement('input');
     wowCb.type = 'checkbox'; wowCb.id = 'cb-wow';
-    if (item?.has_wow_goal) wowCb.checked = true;
-    wowCb.style.cssText = 'width:16px;height:16px;cursor:pointer;accent-color:#f59e0b;';
+    wowCb.checked = item?.has_wow_goal ?? false;
+    wowCb.style.cssText = 'width:16px;height:16px;cursor:pointer;accent-color:#f59e0b;flex-shrink:0;';
     const wowLbl = document.createElement('label');
     wowLbl.htmlFor = 'cb-wow';
     wowLbl.style.cssText = 'font-size:13px;color:var(--text-primary);cursor:pointer;';
     wowLbl.textContent = 'Есть цель по WOW фонду';
     wowRow.append(wowCb, wowLbl);
     modal.insertBefore(wowRow, modal.lastElementChild);
+
+    const wowGoalWrap = document.createElement('div');
+    wowGoalWrap.style.cssText = `display:${wowCb.checked ? 'block' : 'none'};`;
+    const wowGoalLbl = document.createElement('div');
+    wowGoalLbl.style.cssText = 'font-size:13px;font-weight:500;color:var(--text-secondary);margin-bottom:5px;';
+    wowGoalLbl.textContent = 'Цель по WOW';
+    const wowGoalInp = document.createElement('input');
+    wowGoalInp.type = 'text'; wowGoalInp.value = item?.wow_goal ?? '';
+    wowGoalInp.placeholder = '98%, 5 мин...';
+    wowGoalInp.style.cssText = INP;
+    wowGoalWrap.append(wowGoalLbl, wowGoalInp);
+    modal.insertBefore(wowGoalWrap, modal.lastElementChild);
+
+    wowCb.addEventListener('change', () => {
+      wowGoalWrap.style.display = wowCb.checked ? 'block' : 'none';
+      if (!wowCb.checked) wowGoalInp.value = '';
+    });
 
     modal.querySelector('#m-save')!.addEventListener('click', async () => {
       const errEl   = modal.querySelector<HTMLElement>('#m-err')!;
@@ -496,7 +453,7 @@ export function renderMotivation(): HTMLElement {
       errEl.style.display = 'none';
       saveBtn.disabled = true; saveBtn.textContent = 'Сохранение...';
       try {
-        const payload = { name, weight, goal, has_wow_goal: wowCb.checked };
+        const payload = { name, weight, goal, has_wow_goal: wowCb.checked, wow_goal: wowGoalInp.value.trim() || null };
         if (item) await updateItem(item.id, payload);
         else      await createItem(block.id, payload);
         close(); await load();
@@ -512,27 +469,20 @@ export function renderMotivation(): HTMLElement {
 
   function showCriticalModal(): void {
     const { overlay, modal, close } = baseModal('Критический фактор');
-
-    const ta = document.createElement('textarea');
-    ta.rows = 3;
-    ta.placeholder = 'Несоответствие санитарным нормам...';
-    ta.style.cssText = `${inpStyle} resize:vertical;`;
-    const lbl = document.createElement('div');
-    lbl.style.cssText = 'font-size:13px;font-weight:500;color:var(--text-secondary);margin-bottom:5px;';
-    lbl.textContent = 'Описание *';
-    const wrap = document.createElement('div');
-    wrap.append(lbl, ta);
-    modal.insertBefore(wrap, modal.lastElementChild);
+    const nameInp = mField(modal, 'Название фактора *', 'text', '', 'Нарушение санитарных норм...');
+    const indInp  = mField(modal, 'Показатель критичности', 'text', '', 'Оценка ниже 80%, результат проверки < 3...');
+    mHint(modal, 'Укажите конкретное значение, при котором фактор считается наступившим.');
 
     modal.querySelector('#m-save')!.addEventListener('click', async () => {
       const errEl   = modal.querySelector<HTMLElement>('#m-err')!;
       const saveBtn = modal.querySelector<HTMLButtonElement>('#m-save')!;
-      const desc    = ta.value.trim();
-      if (!desc) { showErr(errEl, 'Описание обязательно'); return; }
+      const name    = nameInp.value.trim();
+      if (!name) { showErr(errEl, 'Название обязательно'); return; }
       errEl.style.display = 'none';
       saveBtn.disabled = true; saveBtn.textContent = '...';
       try {
-        await createCritical(desc); close(); await load();
+        await createCritical({ name, indicator: indInp.value.trim() || null });
+        close(); await load();
       } catch (err) {
         saveBtn.disabled = false; saveBtn.textContent = 'Добавить';
         showErr(errEl, (err as Error).message);
@@ -541,7 +491,7 @@ export function renderMotivation(): HTMLElement {
     modal.querySelector<HTMLButtonElement>('#m-save')!.textContent = 'Добавить';
 
     document.body.appendChild(overlay);
-    ta.focus();
+    nameInp.focus();
   }
 
   load();
@@ -550,69 +500,95 @@ export function renderMotivation(): HTMLElement {
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
-const inpStyle = 'width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-family:inherit;background:var(--bg-input);color:var(--text-primary);outline:none;box-sizing:border-box;';
+const INP = 'width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-family:inherit;background:var(--bg-input);color:var(--text-primary);outline:none;box-sizing:border-box;';
 
-function sectionLabel(text: string): HTMLElement {
+function secLabel(text: string): HTMLElement {
   const el = document.createElement('div');
   el.style.cssText = 'font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;';
   el.textContent = text;
   return el;
 }
 
-function sumBadgeStyle(ok: boolean): string {
-  return ok
-    ? 'font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;background:var(--accent-light);color:var(--accent);'
-    : 'font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;background:#ef444420;color:#ef4444;';
+function span(style: string, text: string): HTMLElement {
+  const el = document.createElement('span');
+  el.style.cssText = style;
+  el.textContent = text;
+  return el;
 }
 
-function moneyField(label: string, value: number, disabled: boolean): { el: HTMLElement; inp: HTMLInputElement } {
+function sumStyle(ok: boolean): string {
+  return ok
+    ? 'font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;background:var(--accent-light);color:var(--accent);'
+    : 'font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;background:#ef444420;color:#ef4444;';
+}
+
+function btn14(label: string, handler: () => void, extra = ''): HTMLButtonElement {
+  const b = document.createElement('button');
+  b.className = 'btn btn-outline';
+  b.style.cssText = `padding:3px 8px;font-size:11px;${extra}`;
+  b.textContent = label;
+  b.addEventListener('click', handler);
+  return b;
+}
+
+function fundField(label: string, value: number, disabled: boolean, accentColor: string): { el: HTMLElement; inp: HTMLInputElement } {
   const el = document.createElement('div');
-  el.style.cssText = 'flex:1;min-width:150px;';
+  el.style.cssText = 'flex:1;min-width:145px;';
+
   const lbl = document.createElement('div');
-  lbl.style.cssText = 'font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;';
+  lbl.style.cssText = `font-size:10px;font-weight:700;color:${accentColor};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;`;
   lbl.textContent = label;
+
+  const inputRow = document.createElement('div');
+  inputRow.style.cssText = 'display:flex;align-items:center;gap:4px;';
+
   const inp = document.createElement('input');
-  inp.type = 'number'; inp.min = '0'; inp.value = String(value); inp.disabled = disabled;
-  inp.style.cssText = `${inpStyle} font-size:18px;font-weight:700;${disabled ? 'opacity:0.7;' : ''}`;
-  el.append(lbl, inp);
+  inp.type        = 'text';
+  inp.placeholder = '';
+  inp.value       = value > 0 ? fmtN(value) : '';
+  inp.disabled    = disabled;
+  inp.style.cssText = `padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:18px;font-weight:700;font-family:inherit;background:var(--bg-input);color:var(--text-primary);outline:none;width:100%;letter-spacing:0.01em;${disabled ? 'opacity:0.7;' : ''}`;
+
+  inp.addEventListener('input', () => {
+    const raw = inp.value.replace(/\D/g, '');
+    const pos = inp.selectionStart ?? 0;
+    const oldLen = inp.value.length;
+    inp.value = raw ? fmtN(parseInt(raw, 10)) : '';
+    const diff = inp.value.length - oldLen;
+    inp.setSelectionRange(Math.max(0, pos + diff), Math.max(0, pos + diff));
+  });
+
+  const sym = document.createElement('span');
+  sym.style.cssText = 'font-size:16px;font-weight:600;color:var(--text-muted);';
+  sym.textContent = '₽';
+
+  inputRow.append(inp, sym);
+  el.append(lbl, inputRow);
   return { el, inp };
 }
 
-function field(container: HTMLElement, label: string, type: string, value: string, placeholder: string): HTMLInputElement {
-  const wrap = document.createElement('div');
-  const lbl  = document.createElement('div');
-  lbl.style.cssText = 'font-size:13px;font-weight:500;color:var(--text-secondary);margin-bottom:5px;';
-  lbl.textContent = label;
-  const inp = document.createElement('input');
-  inp.type = type; inp.value = value; inp.placeholder = placeholder;
-  inp.style.cssText = inpStyle;
-  wrap.append(lbl, inp);
-  container.insertBefore(wrap, container.lastElementChild);
-  return inp;
-}
-
+// Modal helpers
 function baseModal(title: string): { overlay: HTMLElement; modal: HTMLElement; close: () => void } {
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;';
 
   const modal = document.createElement('div');
-  modal.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:28px;width:100%;max-width:460px;box-shadow:var(--shadow-md);max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;gap:14px;';
+  modal.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:24px;width:100%;max-width:440px;box-shadow:var(--shadow-md);max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;gap:12px;';
 
   const h2 = document.createElement('h2');
-  h2.style.cssText = 'font-size:18px;font-weight:700;margin:0;';
+  h2.style.cssText = 'font-size:17px;font-weight:700;margin:0;';
   h2.textContent = title;
 
   const errEl = document.createElement('div');
   errEl.id = 'm-err';
-  errEl.style.cssText = 'color:#ef4444;font-size:13px;display:none;';
+  errEl.style.cssText = 'color:#ef4444;font-size:12px;display:none;';
 
   const btnRow = document.createElement('div');
-  btnRow.style.cssText = 'display:flex;gap:10px;justify-content:flex-end;';
+  btnRow.style.cssText = 'display:flex;gap:10px;justify-content:flex-end;margin-top:4px;';
   const cancelBtn = document.createElement('button');
   cancelBtn.className = 'btn btn-outline'; cancelBtn.textContent = 'Отмена';
   const saveBtn = document.createElement('button');
-  saveBtn.className = 'btn btn-primary'; saveBtn.textContent = 'Сохранить';
-  saveBtn.id = 'm-save';
+  saveBtn.className = 'btn btn-primary'; saveBtn.textContent = 'Сохранить'; saveBtn.id = 'm-save';
   btnRow.append(cancelBtn, saveBtn);
 
   modal.append(h2, errEl, btnRow);
@@ -625,13 +601,38 @@ function baseModal(title: string): { overlay: HTMLElement; modal: HTMLElement; c
   return { overlay, modal, close };
 }
 
+function mField(modal: HTMLElement, label: string, type: string, value: string, placeholder: string): HTMLInputElement {
+  const wrap = document.createElement('div');
+  const lbl = document.createElement('div');
+  lbl.style.cssText = 'font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;';
+  lbl.textContent = label;
+  const inp = document.createElement('input');
+  inp.type = type; inp.value = value; inp.placeholder = placeholder;
+  inp.style.cssText = INP;
+  wrap.append(lbl, inp);
+  modal.insertBefore(wrap, modal.lastElementChild);
+  return inp;
+}
+
+function mHint(modal: HTMLElement, text: string): HTMLElement {
+  const el = document.createElement('div');
+  el.style.cssText = 'font-size:11px;color:var(--text-muted);margin-top:-4px;';
+  el.textContent = text;
+  modal.insertBefore(el, modal.lastElementChild);
+  return el;
+}
+
 function showErr(el: HTMLElement, msg: string): void {
-  el.textContent = msg;
-  el.style.display = 'block';
+  el.textContent = msg; el.style.display = 'block';
 }
 
 function fmtN(n: number): string {
   return n.toLocaleString('ru-RU');
+}
+
+function parseMoney(s: string): number {
+  const digits = s.replace(/\D/g, '');
+  return digits ? parseInt(digits, 10) : 0;
 }
 
 function round1(n: number): number {
@@ -641,6 +642,3 @@ function round1(n: number): number {
 function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
-
-// suppress unused warning — used in template strings indirectly
-void esc;

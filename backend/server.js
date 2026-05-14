@@ -785,22 +785,28 @@ db.exec(`
   );
 `);
 
+// Migrations for new columns
+try { db.exec("ALTER TABLE motivation_items    ADD COLUMN wow_goal  TEXT"); } catch {}
+try { db.exec("ALTER TABLE motivation_critical ADD COLUMN name      TEXT"); } catch {}
+try { db.exec("ALTER TABLE motivation_critical ADD COLUMN indicator TEXT"); } catch {}
+
 app.get('/api/pizzerias/:pizzeriaId/motivation2', authMiddleware, requirePizzeriaAccess, requirePerm('motivation'), (req, res) => {
   const pid    = req.pizzeriaId;
   const fund   = db.prepare("SELECT premium, wow FROM motivation_fund WHERE pizzeria_id = ?").get(pid) ?? { premium: 0, wow: 0 };
   const blocks = db.prepare("SELECT * FROM motivation_blocks WHERE pizzeria_id = ? ORDER BY sort_order, id").all(pid);
   const getIt  = db.prepare("SELECT * FROM motivation_items WHERE block_id = ? ORDER BY sort_order, id");
-  const crits  = db.prepare("SELECT id, description FROM motivation_critical WHERE pizzeria_id = ? ORDER BY sort_order, id").all(pid);
+  const crits  = db.prepare("SELECT id, name, indicator FROM motivation_critical WHERE pizzeria_id = ? ORDER BY sort_order, id").all(pid);
   res.json({
     fund,
     blocks: blocks.map(b => ({
       id: b.id, name: b.name, weight: b.weight,
       items: getIt.all(b.id).map(it => ({
         id: it.id, block_id: it.block_id, name: it.name,
-        weight: it.weight, goal: it.goal, has_wow_goal: !!it.has_wow_goal,
+        weight: it.weight, goal: it.goal,
+        has_wow_goal: !!it.has_wow_goal, wow_goal: it.wow_goal ?? null,
       })),
     })),
-    critical: crits,
+    critical: crits.map(c => ({ id: c.id, name: c.name ?? c.description ?? '', indicator: c.indicator ?? null })),
   });
 });
 
@@ -839,18 +845,18 @@ app.delete('/api/pizzerias/:pizzeriaId/motivation2/blocks/:blockId', authMiddlew
 app.post('/api/pizzerias/:pizzeriaId/motivation2/blocks/:blockId/items', authMiddleware, requirePizzeriaAccess, requirePerm('motivation', true), (req, res) => {
   const block = db.prepare("SELECT id FROM motivation_blocks WHERE id = ? AND pizzeria_id = ?").get(req.params.blockId, req.pizzeriaId);
   if (!block) return res.status(404).json({ error: 'Block not found' });
-  const { name, weight, goal, has_wow_goal } = req.body;
+  const { name, weight, goal, has_wow_goal, wow_goal } = req.body;
   if (!name) return res.status(400).json({ error: 'name обязателен' });
-  const r  = db.prepare("INSERT INTO motivation_items (block_id, name, weight, goal, has_wow_goal) VALUES (?, ?, ?, ?, ?)").run(block.id, name, weight ?? 0, goal || null, has_wow_goal ? 1 : 0);
+  const r  = db.prepare("INSERT INTO motivation_items (block_id, name, weight, goal, has_wow_goal, wow_goal) VALUES (?, ?, ?, ?, ?, ?)").run(block.id, name, weight ?? 0, goal || null, has_wow_goal ? 1 : 0, wow_goal || null);
   const it = db.prepare("SELECT * FROM motivation_items WHERE id = ?").get(r.lastInsertRowid);
-  res.status(201).json({ id: it.id, block_id: it.block_id, name: it.name, weight: it.weight, goal: it.goal, has_wow_goal: !!it.has_wow_goal });
+  res.status(201).json({ id: it.id, block_id: it.block_id, name: it.name, weight: it.weight, goal: it.goal, has_wow_goal: !!it.has_wow_goal, wow_goal: it.wow_goal ?? null });
 });
 
 app.put('/api/pizzerias/:pizzeriaId/motivation2/items/:itemId', authMiddleware, requirePizzeriaAccess, requirePerm('motivation', true), (req, res) => {
   const it = db.prepare("SELECT mi.* FROM motivation_items mi JOIN motivation_blocks mb ON mb.id = mi.block_id WHERE mi.id = ? AND mb.pizzeria_id = ?").get(req.params.itemId, req.pizzeriaId);
   if (!it) return res.status(404).json({ error: 'Not found' });
-  const { name, weight, goal, has_wow_goal } = req.body;
-  db.prepare("UPDATE motivation_items SET name=?, weight=?, goal=?, has_wow_goal=? WHERE id=?").run(name ?? it.name, weight ?? it.weight, goal ?? null, has_wow_goal ? 1 : 0, it.id);
+  const { name, weight, goal, has_wow_goal, wow_goal } = req.body;
+  db.prepare("UPDATE motivation_items SET name=?, weight=?, goal=?, has_wow_goal=?, wow_goal=? WHERE id=?").run(name ?? it.name, weight ?? it.weight, goal ?? null, has_wow_goal ? 1 : 0, wow_goal || null, it.id);
   res.json({ success: true });
 });
 
@@ -862,11 +868,11 @@ app.delete('/api/pizzerias/:pizzeriaId/motivation2/items/:itemId', authMiddlewar
 });
 
 app.post('/api/pizzerias/:pizzeriaId/motivation2/critical', authMiddleware, requirePizzeriaAccess, requirePerm('motivation', true), (req, res) => {
-  const { description } = req.body;
-  if (!description) return res.status(400).json({ error: 'description обязателен' });
-  const r = db.prepare("INSERT INTO motivation_critical (pizzeria_id, description) VALUES (?, ?)").run(req.pizzeriaId, description);
-  const c = db.prepare("SELECT id, description FROM motivation_critical WHERE id = ?").get(r.lastInsertRowid);
-  res.status(201).json(c);
+  const { name, indicator } = req.body;
+  if (!name) return res.status(400).json({ error: 'name обязателен' });
+  const r = db.prepare("INSERT INTO motivation_critical (pizzeria_id, description, name, indicator) VALUES (?, ?, ?, ?)").run(req.pizzeriaId, name, name, indicator || null);
+  const c = db.prepare("SELECT id, name, indicator FROM motivation_critical WHERE id = ?").get(r.lastInsertRowid);
+  res.status(201).json({ id: c.id, name: c.name ?? '', indicator: c.indicator ?? null });
 });
 
 app.delete('/api/pizzerias/:pizzeriaId/motivation2/critical/:critId', authMiddleware, requirePizzeriaAccess, requirePerm('motivation', true), (req, res) => {
