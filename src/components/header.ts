@@ -1,5 +1,6 @@
 import { navigate } from '../router';
 import { getUser, logout, isManagement, isSuperAdmin, roleLabel } from '../services/auth';
+import { canRead } from '../services/permissions';
 import { getAllPizzerias, getActivePizzeriaId, setActivePizzeria } from '../services/pizzeriaContext';
 import { toggleTheme, updateToggleButton } from '../services/theme';
 
@@ -109,11 +110,12 @@ function buildSidebar(): HTMLElement {
     if (isSuperAdmin()) {
       nav.appendChild(makeItem('Пользователи', '/users', IC.users));
     }
-    nav.appendChild(makeItem('Контакты',   '/contacts',     IC.contacts));
-    nav.appendChild(makeItem('Ставки',     '/rates',        IC.rates));
-    nav.appendChild(makeItem('Доступы',    '/credentials',  IC.credentials));
-    nav.appendChild(makeItem('Мотивация',  '/motivation',   IC.motivation));
-    nav.appendChild(makeItem('Графики',    '/schedule',     IC.schedule));
+    if (canRead('contacts'))                                     nav.appendChild(makeItem('Контакты',  '/contacts',    IC.contacts));
+    if (canRead('rates'))                                        nav.appendChild(makeItem('Ставки',    '/rates',       IC.rates));
+    if (canRead('credentials'))                                  nav.appendChild(makeItem('Доступы',   '/credentials', IC.credentials));
+    if (canRead('motivation'))                                   nav.appendChild(makeItem('Мотивация', '/motivation',  IC.motivation));
+    if (canRead('schedules_own') || canRead('schedules_all'))    nav.appendChild(makeItem('Графики',   '/schedule',    IC.schedule));
+    if (isSuperAdmin())                                          nav.appendChild(makeItem('Роли',      '/roles',       IC.users));
     return nav;
   }
 
@@ -252,7 +254,11 @@ function buildHorizontalHeader(): HTMLElement {
       a.addEventListener('mouseleave', () => { if (!active) a.style.background = 'transparent'; });
       return a;
     };
-    nav.appendChild(makeNavLink('Мой график', '/schedule'));
+    if (canRead('contacts'))    nav.appendChild(makeNavLink('Контакты',   '/contacts'));
+    if (canRead('rates'))       nav.appendChild(makeNavLink('Ставки',     '/rates'));
+    if (canRead('credentials')) nav.appendChild(makeNavLink('Доступы',    '/credentials'));
+    if (canRead('motivation'))  nav.appendChild(makeNavLink('Мотивация',  '/motivation'));
+    if (canRead('schedules_own')) nav.appendChild(makeNavLink('Мой график', '/schedule'));
     header.appendChild(nav);
 
     updateToggleButton();

@@ -1,4 +1,5 @@
 import { getActivePizzeria } from '../services/pizzeriaContext';
+import { canWrite } from '../services/permissions';
 import { getMotivation, createMotivationRule, updateMotivationRule, deleteMotivationRule, MOTIVATION_METRICS } from '../services/motivation';
 import type { MotivationRule } from '../services/motivation';
 
@@ -37,11 +38,13 @@ export function renderMotivation(): HTMLElement {
         <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">${activePiz!.name}</div>
       </div>
     `;
-    const addBtn = document.createElement('button');
-    addBtn.className = 'btn btn-primary';
-    addBtn.textContent = '+ Добавить правило';
-    addBtn.addEventListener('click', () => showModal(null));
-    hdr.appendChild(addBtn);
+    if (canWrite('motivation')) {
+      const addBtn = document.createElement('button');
+      addBtn.className = 'btn btn-primary';
+      addBtn.textContent = '+ Добавить правило';
+      addBtn.addEventListener('click', () => showModal(null));
+      hdr.appendChild(addBtn);
+    }
     wrap.appendChild(hdr);
 
     if (items.length === 0) {
@@ -74,8 +77,8 @@ export function renderMotivation(): HTMLElement {
         <td>${activeHtml}</td>
         <td>
           <div style="display:flex;gap:8px;">
-            <button class="btn btn-outline" style="padding:5px 12px;font-size:12px;" data-action="edit" data-id="${r.id}">Изменить</button>
-            <button class="btn btn-outline" style="padding:5px 12px;font-size:12px;color:var(--text-muted);" data-action="delete" data-id="${r.id}">Удалить</button>
+            ${canWrite('motivation') ? `<button class="btn btn-outline" style="padding:5px 12px;font-size:12px;" data-action="edit" data-id="${r.id}">Изменить</button>
+            <button class="btn btn-outline" style="padding:5px 12px;font-size:12px;color:var(--text-muted);" data-action="delete" data-id="${r.id}">Удалить</button>` : ''}
           </div>
         </td>
       `;

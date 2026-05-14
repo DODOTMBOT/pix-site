@@ -1,6 +1,7 @@
 import { getActivePizzeria } from '../services/pizzeriaContext';
 import { getRates, createRate, updateRate, deleteRate, RATE_CATEGORIES } from '../services/rates';
 import type { Rate, RateCategory } from '../services/rates';
+import { canWrite } from '../services/permissions';
 
 const CATEGORY_LABELS: Record<RateCategory, string> = {
   кухня:  'Кухня',
@@ -49,11 +50,13 @@ export function renderRates(): HTMLElement {
         <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">${activePiz!.name}</div>
       </div>
     `;
-    const addBtn = document.createElement('button');
-    addBtn.className = 'btn btn-primary';
-    addBtn.textContent = '+ Добавить ставку';
-    addBtn.addEventListener('click', () => showModal(null));
-    hdr.appendChild(addBtn);
+    if (canWrite('rates')) {
+      const addBtn = document.createElement('button');
+      addBtn.className = 'btn btn-primary';
+      addBtn.textContent = '+ Добавить ставку';
+      addBtn.addEventListener('click', () => showModal(null));
+      hdr.appendChild(addBtn);
+    }
     wrap.appendChild(hdr);
 
     if (items.length === 0) {
@@ -98,10 +101,10 @@ export function renderRates(): HTMLElement {
         <td style="color:var(--text-secondary);">${r.rate_per_km != null ? r.rate_per_km + ' ₽/км' : '—'}</td>
         <td style="color:var(--text-muted);font-size:13px;">${r.notes ? esc(r.notes) : ''}</td>
         <td>
-          <div style="display:flex;gap:8px;">
+          ${canWrite('rates') ? `<div style="display:flex;gap:8px;">
             <button class="btn btn-outline" style="padding:5px 12px;font-size:12px;" data-action="edit" data-id="${r.id}">Изменить</button>
             <button class="btn btn-outline" style="padding:5px 12px;font-size:12px;color:var(--text-muted);" data-action="delete" data-id="${r.id}">Удалить</button>
-          </div>
+          </div>` : ''}
         </td>
       `;
       tbody.appendChild(tr);

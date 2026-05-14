@@ -1,5 +1,6 @@
 import { navigate } from '../router';
-import { authFetch, isManagement } from '../services/auth';
+import { authFetch } from '../services/auth';
+import { canWrite } from '../services/permissions';
 
 interface PizzeriaRow {
   id:           number;
@@ -39,7 +40,7 @@ function buildContent(rows: PizzeriaRow[]): HTMLElement {
   headerRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;';
   headerRow.innerHTML = `<h1 style="font-size:24px;font-weight:700;letter-spacing:-0.02em;">Пиццерии</h1>`;
 
-  if (isManagement()) {
+  if (canWrite('pizzerias')) {
     const addBtn = document.createElement('button');
     addBtn.className = 'btn btn-primary';
     addBtn.textContent = '+ Новая пиццерия';
@@ -79,7 +80,7 @@ function buildContent(rows: PizzeriaRow[]): HTMLElement {
     const address = [p.city, p.street, p.house].filter(Boolean).join(', ') || '—';
     const openDate = p.opening_date ? new Date(p.opening_date).toLocaleDateString('ru-RU') : '—';
 
-    const actionsHtml = isManagement() ? `
+    const actionsHtml = canWrite('pizzerias') ? `
       <div style="display:flex;gap:8px;">
         <button class="btn btn-outline" style="padding:5px 12px;font-size:12px;" data-action="edit" data-id="${p.id}">Изменить</button>
         <button class="btn btn-outline" style="padding:5px 12px;font-size:12px;color:var(--text-muted);" data-action="archive" data-id="${p.id}">Архивировать</button>

@@ -2,6 +2,7 @@ import './styles/global.css';
 import './styles/components.css';
 import { initTheme }     from './services/theme';
 import { loadContext }   from './services/pizzeriaContext';
+import { loadPermissions } from './services/permissions';
 import { rebuildHeader } from './components/header';
 import { renderHeader } from './components/header';
 import { renderFooter } from './components/footer';
@@ -27,6 +28,7 @@ app.appendChild(layout);
 (async () => {
   try {
     await loadContext();
+    await loadPermissions();
   } catch {
     // authFetch handles 401 (expired/missing session) by redirecting to /login.
     // Other failures (server down, parse error) are surfaced per-page.

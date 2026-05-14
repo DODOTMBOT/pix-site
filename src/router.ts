@@ -10,7 +10,9 @@ import { renderRates }         from './pages/rates';
 import { renderCredentials }   from './pages/credentials';
 import { renderMotivation }    from './pages/motivation';
 import { renderSchedules }     from './pages/schedules';
+import { renderRoles }         from './pages/roles';
 import { isAuthenticated, isManagement, isSuperAdmin } from './services/auth';
+import { canRead, canWrite }   from './services/permissions';
 
 const PUBLIC_PATHS = new Set(['/login']);
 
@@ -31,10 +33,28 @@ function guardRoute(path: string): string | null {
   const p = path.split('?')[0].split('#')[0];
   if (PUBLIC_PATHS.has(p)) return null;
   if (!isAuthenticated()) return '/login';
-  if (p === '/pizzerias' && !isManagement()) return '/';
-  if (p.startsWith('/pizzerias/') && p.endsWith('/edit') && !isManagement()) return '/';
-  if (p === '/pizzerias/new' && !isManagement()) return '/';
-  if ((p === '/users'     || p.startsWith('/users/'))     && !isSuperAdmin())  return '/';
+
+  // Hardcoded superadmin-only — never configurable
+  if ((p === '/users' || p.startsWith('/users/')) && !isSuperAdmin()) return '/';
+  if (p === '/roles' && !isSuperAdmin()) return '/';
+
+  // Management always has full read access to all sections
+  if (isManagement()) {
+    if ((p === '/pizzerias/new' || p.endsWith('/edit')) && !canWrite('pizzerias')) return '/';
+    return null;
+  }
+
+  // Permission-based route guards for manager / shift_manager
+  if (p === '/contacts'    && !canRead('contacts'))                          return '/';
+  if (p === '/rates'       && !canRead('rates'))                             return '/';
+  if (p === '/credentials' && !canRead('credentials'))                       return '/';
+  if (p === '/motivation'  && !canRead('motivation'))                        return '/';
+  if (p === '/schedule'    && !canRead('schedules_own'))                     return '/';
+  if (p === '/pizzerias'   && !canRead('pizzerias'))                         return '/';
+  if ((p === '/pizzerias/new' || p.endsWith('/edit')) && !canWrite('pizzerias')) return '/';
+  const pizzViewMatch = p.match(/^\/pizzerias\/(\d+)$/);
+  if (pizzViewMatch && !canRead('pizzerias'))                                return '/';
+
   return null;
 }
 
@@ -64,6 +84,7 @@ function matchRoute(path: string): () => HTMLElement {
   if (p === '/credentials') return renderCredentials;
   if (p === '/motivation') return renderMotivation;
   if (p === '/schedule')   return renderSchedules;
+  if (p === '/roles')      return renderRoles;
 
   return renderStub;
 }

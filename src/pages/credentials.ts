@@ -1,4 +1,5 @@
 import { getActivePizzeria } from '../services/pizzeriaContext';
+import { canWrite } from '../services/permissions';
 import { getCredentials, createCredential, updateCredential, deleteCredential, CREDENTIAL_SERVICES } from '../services/credentials';
 import type { Credential } from '../services/credentials';
 
@@ -37,11 +38,13 @@ export function renderCredentials(): HTMLElement {
         <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">${activePiz!.name}</div>
       </div>
     `;
-    const addBtn = document.createElement('button');
-    addBtn.className = 'btn btn-primary';
-    addBtn.textContent = '+ Добавить доступ';
-    addBtn.addEventListener('click', () => showModal(null));
-    hdr.appendChild(addBtn);
+    if (canWrite('credentials')) {
+      const addBtn = document.createElement('button');
+      addBtn.className = 'btn btn-primary';
+      addBtn.textContent = '+ Добавить доступ';
+      addBtn.addEventListener('click', () => showModal(null));
+      hdr.appendChild(addBtn);
+    }
     wrap.appendChild(hdr);
 
     if (items.length === 0) {
@@ -78,8 +81,8 @@ export function renderCredentials(): HTMLElement {
         <td style="color:var(--text-muted);font-size:13px;">${c.notes ? esc(c.notes) : ''}</td>
         <td>
           <div style="display:flex;gap:8px;">
-            <button class="btn btn-outline" style="padding:5px 12px;font-size:12px;" data-action="edit" data-id="${c.id}">Изменить</button>
-            <button class="btn btn-outline" style="padding:5px 12px;font-size:12px;color:var(--text-muted);" data-action="delete" data-id="${c.id}">Удалить</button>
+            ${canWrite('credentials') ? `<button class="btn btn-outline" style="padding:5px 12px;font-size:12px;" data-action="edit" data-id="${c.id}">Изменить</button>
+            <button class="btn btn-outline" style="padding:5px 12px;font-size:12px;color:var(--text-muted);" data-action="delete" data-id="${c.id}">Удалить</button>` : ''}
           </div>
         </td>
       `;

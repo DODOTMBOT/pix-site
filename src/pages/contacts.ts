@@ -1,6 +1,7 @@
 import { getAllPizzerias } from '../services/pizzeriaContext';
 import { getContacts, createContact, updateContact, deleteContact } from '../services/contacts';
 import type { Contact } from '../services/contacts';
+import { canWrite } from '../services/permissions';
 
 export function renderContacts(): HTMLElement {
   const page = document.createElement('div');
@@ -31,11 +32,13 @@ export function renderContacts(): HTMLElement {
         <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">Все пиццерии</div>
       </div>
     `;
-    const addBtn = document.createElement('button');
-    addBtn.className = 'btn btn-primary';
-    addBtn.textContent = '+ Добавить контакт';
-    addBtn.addEventListener('click', () => showModal(null));
-    hdr.appendChild(addBtn);
+    if (canWrite('contacts')) {
+      const addBtn = document.createElement('button');
+      addBtn.className = 'btn btn-primary';
+      addBtn.textContent = '+ Добавить контакт';
+      addBtn.addEventListener('click', () => showModal(null));
+      hdr.appendChild(addBtn);
+    }
     wrap.appendChild(hdr);
 
     if (items.length === 0) {
@@ -74,12 +77,12 @@ export function renderContacts(): HTMLElement {
         <td style="max-width:220px;">${pizzeriaBadges}</td>
         <td style="color:var(--text-secondary);">${c.phone ? `<a href="tel:${esc(c.phone)}" style="color:var(--text-secondary);text-decoration:none;">${esc(c.phone)}</a>` : '—'}</td>
         <td style="color:var(--text-secondary);">${c.email ? `<a href="mailto:${esc(c.email)}" style="color:var(--text-secondary);text-decoration:none;">${esc(c.email)}</a>` : '—'}</td>
-        <td>
+        ${canWrite('contacts') ? `<td>
           <div style="display:flex;gap:8px;">
             <button class="btn btn-outline" style="padding:5px 12px;font-size:12px;" data-action="edit" data-id="${c.id}">Изменить</button>
             <button class="btn btn-outline" style="padding:5px 12px;font-size:12px;color:var(--text-muted);" data-action="delete" data-id="${c.id}">Удалить</button>
           </div>
-        </td>
+        </td>` : '<td></td>'}
       `;
       tbody.appendChild(tr);
     });
