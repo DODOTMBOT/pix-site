@@ -60,12 +60,12 @@ function buildView(p: PizzeriaDetail): HTMLElement {
   const initials = p.name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
   const photoCard = document.createElement('div');
   photoCard.style.cssText = `
-    background: linear-gradient(145deg, #2563eb 0%, #1d4ed8 60%, #1e3a8a 100%);
+    background: linear-gradient(145deg, #FF6900 0%, #e05e00 55%, #1C1C1E 100%);
     border-radius:20px;
     padding:28px 24px 24px;
     display:flex;flex-direction:column;justify-content:flex-end;
     min-height:200px;
-    box-shadow:0 8px 24px rgba(37,99,235,0.30);
+    box-shadow:0 8px 24px rgba(255,105,0,0.35);
     position:relative;overflow:hidden;
   `;
   photoCard.innerHTML = `
@@ -99,13 +99,13 @@ function buildView(p: PizzeriaDetail): HTMLElement {
   // Team card
   const teamCard = infoCard('Команда', [
     {
-      icon: personIcon('#2563eb'),
+      icon: personIcon('#FF6900'),
       label: 'Управляющий',
       value: p.manager?.name ?? '—',
       sub: p.manager ? 'Manager' : '',
     },
     {
-      icon: personIcon('#7c3aed'),
+      icon: personIcon('#c45200'),
       label: 'Куратор ТУ',
       value: p.curator?.name ?? '—',
       sub: p.curator?.job_title ?? '',

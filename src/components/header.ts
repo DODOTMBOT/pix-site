@@ -65,7 +65,24 @@ function buildSidebar(): HTMLElement {
   // Logo
   const logo = document.createElement('div');
   logo.className = 'sidebar-logo';
-  logo.innerHTML = `<div class="logo-mark" style="cursor:pointer;">PiX</div><span>Панель управления</span>`;
+  logo.innerHTML = `
+    <div class="logo-mark" style="cursor:pointer;background:#1C1C1E;border-radius:10px;padding:4px 8px;display:inline-flex;align-items:center;">
+      <svg viewBox="0 0 54 28" width="54" height="28" xmlns="http://www.w3.org/2000/svg">
+        <!-- P -->
+        <path d="M2 3h8c3.5 0 5.5 2 5.5 5s-2 4.8-5.5 4.8H6v5.2H2V3zm4 6.5h3.5c1.2 0 1.8-.6 1.8-1.5s-.6-1.5-1.8-1.5H6v3z" fill="#FF6900"/>
+        <!-- i stem -->
+        <rect x="20" y="7" width="4" height="11" rx="2" fill="#FF6900"/>
+        <!-- i dot: mini pie chart -->
+        <g transform="translate(22,3.5)">
+          <path d="M0,0 L0,-3 A3,3 0 0,1 2.12,-2.12 Z" fill="#FF6900"/>
+          <path d="M0,0 L2.12,-2.12 A3,3 0 1,1 0,-3 Z" fill="#FF6900" opacity="0.5"/>
+        </g>
+        <!-- X -->
+        <path d="M29 3l5.5 8L29 18h4.5l3-4.8 3 4.8H44l-5.5-7L44 3h-4.5L36.5 8 33.5 3z" fill="#FF6900"/>
+      </svg>
+    </div>
+    <span>Панель управления</span>
+  `;
   logo.querySelector('.logo-mark')!.addEventListener('click', () => navigate('/'));
   aside.appendChild(logo);
 
