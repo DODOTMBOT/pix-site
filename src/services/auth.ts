@@ -113,7 +113,7 @@ export function logout(): void {
 }
 
 export async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  return fetch(url, {
+  const res = await fetch(url, {
     ...options,
     headers: {
       'Content-Type':  'application/json',
@@ -121,4 +121,9 @@ export async function authFetch(url: string, options: RequestInit = {}): Promise
       ...(options.headers as Record<string, string> ?? {}),
     },
   });
+  if (res.status === 401) {
+    logout();
+    window.location.replace('/login');
+  }
+  return res;
 }

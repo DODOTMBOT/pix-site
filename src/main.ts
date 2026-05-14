@@ -28,10 +28,12 @@ app.appendChild(layout);
   if (getToken()) {
     try {
       await loadContext();
-    } catch (err: unknown) {
-      if (err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 401) {
-        logout();
-      }
+    } catch {
+      // Any failure to restore session (expired token, network error) → log out and go to login.
+      // authFetch already handles 401 by redirecting, but if loadContext() fails for other
+      // reasons (parse error, server down) we still clear auth so the user isn't stuck on
+      // empty pages.
+      logout();
     }
   }
   initRouter(main);
