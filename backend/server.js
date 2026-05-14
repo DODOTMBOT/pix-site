@@ -7,12 +7,14 @@ const rateLimit    = require('express-rate-limit');
 const session      = require('express-session');
 const SQLiteStore  = require('connect-sqlite3')(session);
 const path         = require('path');
+const fs           = require('fs');
 
 const SESSION_SECRET = process.env.SESSION_SECRET || 'pix-session-secret-change-in-production';
 const PORT           = process.env.PORT || 3000;
 // DB and sessions live in ../data/ so they survive backend directory replacements on deploy
 const DATA_DIR = path.join(__dirname, '../data');
 const DB_PATH  = path.join(DATA_DIR, 'dodo.db');
+fs.mkdirSync(DATA_DIR, { recursive: true });
 
 // ── Database ───────────────────────────────────────────────────────────────────
 const db = new Database(DB_PATH);
@@ -224,7 +226,10 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
     req.session.userEmail = user.email;
     req.session.userRole  = user.role;
     req.session.userName  = user.name;
-    res.json({ user: fmtUser(user) });
+    req.session.save(saveErr => {
+      if (saveErr) return res.status(500).json({ error: 'Ошибка сессии' });
+      res.json({ user: fmtUser(user) });
+    });
   });
 });
 
