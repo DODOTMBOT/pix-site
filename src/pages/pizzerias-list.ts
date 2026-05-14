@@ -86,6 +86,8 @@ function buildContent(rows: PizzeriaRow[]): HTMLElement {
       </div>
     ` : '';
 
+    tr.style.cssText = 'cursor:pointer;';
+    tr.dataset['id'] = String(p.id);
     tr.innerHTML = `
       <td style="font-weight:600;">${p.name}</td>
       <td style="color:var(--text-secondary);">${address}</td>
@@ -100,18 +102,24 @@ function buildContent(rows: PizzeriaRow[]): HTMLElement {
 
   table.addEventListener('click', async (e) => {
     const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-action]');
-    if (!btn) return;
-    const id     = btn.dataset['id']!;
-    const action = btn.dataset['action']!;
 
-    if (action === 'edit') {
-      navigate(`/pizzerias/${id}`);
-    } else if (action === 'archive') {
-      if (!confirm('Архивировать пиццерию?')) return;
-      btn.disabled = true;
-      await authFetch(`/api/pizzerias/${id}`, { method: 'DELETE' });
-      navigate('/pizzerias');
+    if (btn) {
+      const id     = btn.dataset['id']!;
+      const action = btn.dataset['action']!;
+      if (action === 'edit') {
+        navigate(`/pizzerias/${id}/edit`);
+      } else if (action === 'archive') {
+        if (!confirm('Архивировать пиццерию?')) return;
+        btn.disabled = true;
+        await authFetch(`/api/pizzerias/${id}`, { method: 'DELETE' });
+        navigate('/pizzerias');
+      }
+      return;
     }
+
+    // Row click → open pizzeria card
+    const tr = (e.target as HTMLElement).closest<HTMLTableRowElement>('tr[data-id]');
+    if (tr) navigate(`/pizzerias/${tr.dataset['id']}`);
   });
 
   card.appendChild(table);

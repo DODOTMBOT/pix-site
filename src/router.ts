@@ -1,6 +1,7 @@
 import { renderLogin }         from './pages/login';
 import { renderHome }          from './pages/home';
 import { renderPizzeriasList } from './pages/pizzerias-list';
+import { renderPizzeriaView }  from './pages/pizzeria-view';
 import { renderPizzeriaForm }  from './pages/pizzeria-form';
 import { renderUsersList }     from './pages/users-list';
 import { renderUserForm }      from './pages/user-form';
@@ -29,7 +30,9 @@ function guardRoute(path: string): string | null {
   const p = path.split('?')[0].split('#')[0];
   if (PUBLIC_PATHS.has(p)) return null;
   if (!isAuthenticated()) return '/login';
-  if ((p === '/pizzerias' || p.startsWith('/pizzerias/')) && !isManagement()) return '/';
+  if (p === '/pizzerias' && !isManagement()) return '/';
+  if (p.startsWith('/pizzerias/') && p.endsWith('/edit') && !isManagement()) return '/';
+  if (p === '/pizzerias/new' && !isManagement()) return '/';
   if ((p === '/users'     || p.startsWith('/users/'))     && !isSuperAdmin())  return '/';
   return null;
 }
@@ -43,8 +46,11 @@ function matchRoute(path: string): () => HTMLElement {
   if (p === '/pizzerias')     return renderPizzeriasList;
   if (p === '/pizzerias/new') return () => renderPizzeriaForm();
 
-  const pizzMatch = p.match(/^\/pizzerias\/(.+)$/);
-  if (pizzMatch) return () => renderPizzeriaForm(pizzMatch[1]);
+  const pizzEditMatch = p.match(/^\/pizzerias\/(\d+)\/edit$/);
+  if (pizzEditMatch) return () => renderPizzeriaForm(pizzEditMatch[1]);
+
+  const pizzViewMatch = p.match(/^\/pizzerias\/(\d+)$/);
+  if (pizzViewMatch) return () => renderPizzeriaView(pizzViewMatch[1]);
 
   if (p === '/users')     return renderUsersList;
   if (p === '/users/new') return () => renderUserForm();

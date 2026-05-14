@@ -112,8 +112,9 @@ function buildForm(
     </div>
   `;
 
-  wrap.querySelector('#cancel-btn')!.addEventListener('click',  () => navigate('/pizzerias'));
-  wrap.querySelector('#cancel-btn2')!.addEventListener('click', () => navigate('/pizzerias'));
+  const back = () => pizzeria ? navigate(`/pizzerias/${pizzeria.id}`) : navigate('/pizzerias');
+  wrap.querySelector('#cancel-btn')!.addEventListener('click',  back);
+  wrap.querySelector('#cancel-btn2')!.addEventListener('click', back);
 
   wrap.querySelector<HTMLFormElement>('#piz-form')!.addEventListener('submit', async e => {
     e.preventDefault();
@@ -159,7 +160,8 @@ function buildForm(
         const err = await res.json().catch(() => ({}));
         throw new Error((err as { error?: string }).error || 'Ошибка сохранения');
       }
-      navigate('/pizzerias');
+      const saved = await res.json() as { id: number };
+      navigate(`/pizzerias/${saved.id}`);
     } catch (err) {
       errEl.textContent   = (err as Error).message;
       errEl.style.display = 'block';
