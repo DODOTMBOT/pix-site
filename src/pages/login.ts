@@ -1,4 +1,6 @@
 import { login } from '../services/auth';
+import { loadContext } from '../services/pizzeriaContext';
+import { rebuildHeader } from '../components/header';
 import { navigate } from '../router';
 
 export function renderLogin(): HTMLElement {
@@ -14,25 +16,19 @@ export function renderLogin(): HTMLElement {
     page.innerHTML = `
       <div style="width:100%;max-width:400px;">
 
-        <!-- Logo -->
         <div style="text-align:center;margin-bottom:36px;">
           <div style="
             width:60px;height:60px;
-            background:linear-gradient(135deg,#f97316,#fbbf24);
+            background:var(--accent);
             color:#fff;font-size:15px;font-weight:800;letter-spacing:0.02em;
             display:inline-flex;align-items:center;justify-content:center;
             border-radius:16px;margin-bottom:16px;
-            box-shadow:0 8px 24px rgba(249,115,22,0.35);
+            box-shadow:var(--shadow-accent);
           ">PiX</div>
-          <div style="
-            font-size:26px;font-weight:800;letter-spacing:-0.03em;margin-bottom:4px;
-            background:linear-gradient(135deg,#f97316,#fbbf24);
-            -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
-          ">PiX</div>
+          <div style="font-size:26px;font-weight:800;letter-spacing:-0.03em;margin-bottom:4px;color:var(--accent);">PiX</div>
           <div style="font-size:13px;color:var(--text-muted);">Dodo Pizza · Внутренняя сеть</div>
         </div>
 
-        <!-- Card -->
         <div style="
           background:var(--bg-card);
           border:1px solid var(--border);
@@ -50,9 +46,7 @@ export function renderLogin(): HTMLElement {
               padding:10px 14px;
               font-size:13px;color:#ef4444;
               margin-bottom:20px;
-            ">
-              ${errorMsg}
-            </div>
+            ">${errorMsg}</div>
           ` : ''}
 
           <form id="login-form" novalidate>
@@ -111,11 +105,13 @@ export function renderLogin(): HTMLElement {
 
       if (!email || !pwd) { render('Введите email и пароль'); return; }
 
-      btn.disabled = true;
+      btn.disabled    = true;
       btn.textContent = 'Вход...';
 
       try {
         await login(email, pwd);
+        await loadContext();
+        rebuildHeader();
         navigate('/');
       } catch (err) {
         render((err as Error).message || 'Ошибка входа');

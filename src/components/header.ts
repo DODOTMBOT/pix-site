@@ -1,279 +1,230 @@
 import { navigate } from '../router';
 import { getUser, logout, isManagement, isSuperAdmin, roleLabel } from '../services/auth';
+import { getAllPizzerias, getActivePizzeriaId, setActivePizzeria } from '../services/pizzeriaContext';
 import { toggleTheme, updateToggleButton } from '../services/theme';
 
-// ── SVG Icons ─────────────────────────────────────────────────────────────────
 const IC = {
-  home:       `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0L0 6.5V16h6v-5h4v5h6V6.5L8 0zm0 1.8 5.5 4.7V15H10v-5H6v5H2.5V6.5L8 1.8z"/></svg>`,
-  motivation: `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M0 12 4 8l3 3 4.5-6L13 7l1-1L9.5 1.5 8.8 3 11 5 6.5 11 3.5 8 0 12zm0 2h16v1H0v-1z"/></svg>`,
-  rates:      `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zM7.5 4h1v.9c1 .2 1.8 1 1.8 2 0 1.1-.9 2-2.3 2-.8 0-1.5-.3-2-.8l.7-.8c.4.3.8.5 1.3.5.7 0 1.1-.3 1.1-.8 0-.4-.4-.7-1.1-.7H7V6.4h.4c.7 0 1.1-.3 1.1-.7 0-.4-.3-.7-.9-.7-.5 0-.9.2-1.2.5l-.7-.8c.4-.5 1-.8 1.8-.9V3h1v1z"/></svg>`,
-  calendar:   `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M5 0v1H1a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1h-4V0h-1v1H6V0H5zm-4 5h14v9H1V5zm1-3h3v1h1V2h4v1h1V2h3v2H1V2zm2 4h2v2H3V6zm4 0h2v2H7V6zm4 0h2v2h-2V6zM3 10h2v2H3v-2zm4 0h2v2H7v-2z"/></svg>`,
-  building:   `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M2 1v14h12V1H2zm1 1h10v12H3V2zm2 2v2h2V4H5zm4 0v2h2V4H9zM5 8v2h2V8H5zm4 0v2h2V8H9zM5 12v2h2v-2H5zm4 0v2h2v-2H9z"/></svg>`,
-  users:      `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M7 7A3 3 0 1 0 7 1a3 3 0 0 0 0 6zm0-5a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm0 6c-3 0-5 1.8-5 4h1c0-1.7 1.7-3 4-3s4 1.3 4 3h1c0-2.2-2-4-5-4zm4.5-4A2.5 2.5 0 1 0 11.5 9a2.5 2.5 0 0 0 0-5zm0 1a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm0 4c-1 0-1.9.4-2.5 1 .7.4 1.3.9 1.6 1.5H11c1.7 0 3 1 3 2.5h1c0-2-1.6-3.5-3.5-3.5z"/></svg>`,
-  key:        `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M3.5 5A4.5 4.5 0 0 0 8 9.5 4.5 4.5 0 0 0 3.5 5zm0 1A3.5 3.5 0 1 1 7 9.5 3.5 3.5 0 0 1 3.5 6zM6.5 7a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm3.8.7 5.2 5.2-1.5 1.5-1.5-1.5-1 1-1.5-1.5-1.5 1.5-1.5-1.5L9 11l1-1-1.5-1.5 1.8-1.8z"/></svg>`,
-  person:     `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0-5a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm0 6c-3 0-5 1.8-5 4h10c0-2.2-2-4-5-4z"/></svg>`,
-  layers:     `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0 .5 4 8 8l7.5-4L8 0zm0 1.3 6 3.2-6 3.2L2 4.5 8 1.3zM.5 8 8 12l7.5-4-1-.6L8 10.7l-6.5-3.3-1 .6zm0 4L8 16l7.5-4-1-.6L8 14.7l-6.5-3.3-1 .6z"/></svg>`,
-  gear:       `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M8 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm0 1a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm5.1-.6-.5-1.2 1.9-1.3L13 1.4 11 2.8l-1.2-.5L9.5.5H6.5L6.2 2.3 5 2.8 3 1.4 1.5 2.9l1.4 1.9-.5 1.2L.5 6.4v3.2l1.9.3.5 1.2-1.4 1.9 1.5 1.5L5 13.2l1.2.5.3 1.8h3l.3-1.8 1.2-.5 2 1.3 1.5-1.5-1.4-1.9.5-1.2 1.9-.3V6.4l-1.9-.3zm.9 3.2-1.8.3-.3.8-.1.4-1 .4.2.3 1.3 1.7-.9.9-1.7-1.3-.4.2-1 .4-.1.3-.3 1.8H5.6l-.3-1.8-.1-.3-1-.4-.4.2-1.7 1.3-.9-.9 1.3-1.7.2-.3-.4-1-.1-.4-1.8-.3V6.9l1.8-.3.1-.4.4-1-.2-.3L1.2 3.2l.9-.9L3.8 4l.4-.2 1-.4.1-.3.3-1.8h2.8l.3 1.8.1.3 1 .4.4-.2 1.7-1.3.9.9-1.3 1.7-.2.3.4 1 .1.4 1.8.3v2.2z"/></svg>`,
-  review:     `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M2 1v14h12V1H2zm1 1h10v12H3V2zm2 2v1h6V4H5zm0 3v1h6V7H5zm0 3v1h4v-1H5z"/></svg>`,
-  logout:     `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M10 3.5 8.5 5l2.5 2.5H5v1h6L8.5 11 10 12.5 14 8l-4-4.5zM2 2h5V1H2a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h5v-1H2V2z"/></svg>`,
-  moon:       `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M6 .278a.768.768 0 0 1 .08.858A7.208 7.208 0 0 0 5.202 4.6c0 4.02 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"/></svg>`,
+  home:        `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0L0 6.5V16h6v-5h4v5h6V6.5L8 0zm0 1.8 5.5 4.7V15H10v-5H6v5H2.5V6.5L8 1.8z"/></svg>`,
+  pizza:       `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M2 1v14h12V1H2zm1 1h10v12H3V2zm2 2v2h2V4H5zm4 0v2h2V4H9zM5 8v2h2V8H5zm4 0v2h2V8H9zM5 12v2h2v-2H5zm4 0v2h2v-2H9z"/></svg>`,
+  users:       `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M7 7A3 3 0 1 0 7 1a3 3 0 0 0 0 6zm0-5a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm0 6c-3 0-5 1.8-5 4h1c0-1.7 1.7-3 4-3s4 1.3 4 3h1c0-2.2-2-4-5-4zm4.5-4A2.5 2.5 0 1 0 11.5 9a2.5 2.5 0 0 0 0-5zm0 1a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm0 4c-1 0-1.9.4-2.5 1 .7.4 1.3.9 1.6 1.5H11c1.7 0 3 1 3 2.5h1c0-2-1.6-3.5-3.5-3.5z"/></svg>`,
+  contacts:    `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H4zm0 1h8a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zm4 2.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2zM5 9c-1.1 0-2 .7-2 2h1c0-.4.5-.8 1-1v-.1C5 9.4 6 9 8 9s3 .4 3 .9V10c.5.2 1 .6 1 1h1c0-1.3-.9-2-2-2H5z"/></svg>`,
+  rates:       `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M1 2v12h14V2H1zm1 1h12v10H2V3zm2 2v1h8V5H4zm0 3v1h5V8H4zm0 3v1h3v-1H4z"/></svg>`,
+  credentials: `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M8 1a4 4 0 0 0-4 4 4 4 0 0 0 .3 1.5L1 9.8V14h3v-1h1v-1h2v-1.2A4 4 0 0 0 8 11a4 4 0 0 0 4-4 4 4 0 0 0-4-4zm0 1a3 3 0 0 1 3 3 3 3 0 0 1-3 3 3 3 0 0 1-1-.2L3.5 10.4V13H2v-2.8l3.4-3.4A3 3 0 0 1 5 5a3 3 0 0 1 3-3zm1.5 1.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/></svg>`,
+  motivation:  `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M8 1l2 5h5l-4 3 1.5 5L8 11 3.5 14 5 9 1 6h5L8 1z"/></svg>`,
+  logout:      `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M10 3.5 8.5 5l2.5 2.5H5v1h6L8.5 11 10 12.5 14 8l-4-4.5zM2 2h5V1H2a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h5v-1H2V2z"/></svg>`,
+  moon:        `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M6 .278a.768.768 0 0 1 .08.858A7.208 7.208 0 0 0 5.202 4.6c0 4.02 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"/></svg>`,
 };
 
-// ── Nav links for regular users ───────────────────────────────────────────────
-const NAV_LINKS: { label: string; path: string; managementPath?: string; managerOnly?: boolean }[] = [
-  { label: 'Регламенты', path: '/regulations' },
-  { label: 'Инструкции', path: '/instructions' },
-  { label: 'Ставки',     path: '/rates' },
-  { label: 'График',     path: '/schedule', managementPath: '/schedule/overview' },
-  { label: 'Структура',  path: '/org' },
-  { label: 'Доступы',    path: '/access' },
-  { label: 'Контакты',   path: '/contacts' },
-  { label: 'Мотивация',  path: '/motivation', managerOnly: true },
-];
+// ── Pizzeria switcher ──────────────────────────────────────────────────────────
+function buildPizzeriaSwitcher(style: 'inline' | 'block'): HTMLElement {
+  const wrap = document.createElement('div');
+  const pizzerias  = getAllPizzerias();
+  const activeId   = getActivePizzeriaId();
 
-// ── Sidebar builder ───────────────────────────────────────────────────────────
-function buildSidebar(onUpdate: (newNav: HTMLElement) => void): HTMLElement {
+  if (pizzerias.length === 0) {
+    wrap.style.cssText = 'font-size:12px;color:var(--text-muted);padding:4px 2px;';
+    wrap.textContent = 'Пиццерий нет';
+    return wrap;
+  }
+
+  if (pizzerias.length === 1) {
+    wrap.style.cssText = style === 'inline'
+      ? 'font-size:13px;font-weight:600;color:var(--text-primary);'
+      : 'font-size:12px;color:var(--text-primary);padding:4px 2px;';
+    wrap.textContent = pizzerias[0].name;
+    return wrap;
+  }
+
+  const sel = document.createElement('select');
+  sel.style.cssText = style === 'inline'
+    ? 'background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 8px;font-size:13px;color:var(--text-primary);font-family:inherit;cursor:pointer;'
+    : 'width:100%;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 8px;font-size:12px;color:var(--text-primary);font-family:inherit;cursor:pointer;margin-top:4px;';
+
+  pizzerias.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value    = String(p.id);
+    opt.textContent = p.name;
+    opt.selected = p.id === activeId;
+    sel.appendChild(opt);
+  });
+
+  sel.addEventListener('change', () => {
+    setActivePizzeria(parseInt(sel.value, 10));
+    navigate(window.location.pathname);
+  });
+
+  wrap.appendChild(sel);
+  return wrap;
+}
+
+// ── Sidebar (superadmin / management) ─────────────────────────────────────────
+function buildSidebar(): HTMLElement {
   const aside = document.createElement('aside');
   aside.className = 'admin-sidebar';
 
   // Logo
   const logo = document.createElement('div');
   logo.className = 'sidebar-logo';
-  logo.innerHTML = `<div class="logo-mark" style="font-size:18px;font-weight:900;color:#f97316;cursor:pointer;">PiX</div><span>Панель управления</span>`;
+  logo.innerHTML = `<div class="logo-mark" style="cursor:pointer;">PiX</div><span>Панель управления</span>`;
   logo.querySelector('.logo-mark')!.addEventListener('click', () => navigate('/'));
   aside.appendChild(logo);
 
   function buildNav(): HTMLElement {
     const curPath = window.location.pathname;
-    const curHash = window.location.hash.slice(1);
 
-    const isActivePath = (path: string): boolean => {
-      if (path.includes('#')) {
-        const [p, h] = path.split('#');
-        return curPath === p && curHash === h;
-      }
-      if (path === '/') return curPath === '/';
-      return curPath === path;
-    };
+    const isActive = (path: string) =>
+      path === '/' ? curPath === '/' : curPath === path || curPath.startsWith(path + '/');
 
-    const nav = document.createElement('nav');
-    nav.className = 'sidebar-nav';
-
-    const makeItem = (label: string, path: string, isSub = false): HTMLElement => {
+    const makeItem = (label: string, path: string, icon: string): HTMLElement => {
       const el = document.createElement('a');
-      el.className = `sidebar-item${isSub ? ' sub' : ''}${isActivePath(path) ? ' active' : ''}`;
-      el.textContent = label;
+      el.className = `sidebar-item${isActive(path) ? ' active' : ''}`;
       el.href = path;
+      el.innerHTML = `<span class="sidebar-icon">${icon}</span><span>${label}</span>`;
       el.addEventListener('click', e => { e.preventDefault(); navigate(path); });
       return el;
     };
 
-    // Direct links
-    nav.appendChild(makeItem('Главная', '/'));
-    nav.appendChild(makeItem('Структура', '/org'));
-    nav.appendChild(makeItem('Контакты', '/contacts'));
-    nav.appendChild(makeItem('Доступы', '/access'));
-    nav.appendChild(makeItem('Ставки', '/rates'));
-    nav.appendChild(makeItem('График управляющих', '/schedule/overview'));
-
-    const divider = document.createElement('div');
-    divider.className = 'sidebar-divider';
-    nav.appendChild(divider);
-
-    // "Панель управления" accordion
-    const isAdminPath = curPath.startsWith('/admin');
-
-    const financeOpen = (curPath === '/admin' && (curHash === 'motivation' || curHash === 'rates' || curHash === '')) ||
-                        curPath.startsWith('/admin/motivation');
-    const managersOpen = curPath === '/schedule/overview' || curPath.startsWith('/admin/projects');
-    const pixOpen      = curPath === '/admin' && ['employees', 'departments', 'contacts', 'access'].includes(curHash);
-    const systemOpen   = (curPath === '/admin' && curHash === 'users') || curPath === '/admin/home';
-
-    const makeSubgroup = (groupId: string, label: string, isOpen: boolean, items: HTMLElement[]): HTMLElement => {
-      const wrap = document.createElement('div');
-
-      const toggle = document.createElement('button');
-      toggle.className = `sidebar-subgroup-toggle${isOpen ? ' open' : ''}`;
-      toggle.dataset['group'] = groupId;
-      toggle.innerHTML = `<span>${label}</span><span class="toggle-arrow">›</span>`;
-
-      const itemsEl = document.createElement('div');
-      itemsEl.className = `sidebar-subgroup-items${isOpen ? ' open' : ''}`;
-      itemsEl.id = `subgroup-${groupId}`;
-      items.forEach(item => itemsEl.appendChild(item));
-
-      toggle.addEventListener('click', () => {
-        const wasOpen = itemsEl.classList.contains('open');
-        itemsEl.classList.toggle('open', !wasOpen);
-        toggle.classList.toggle('open', !wasOpen);
-      });
-
-      wrap.appendChild(toggle);
-      wrap.appendChild(itemsEl);
-      return wrap;
-    };
-
-    const adminToggle = document.createElement('button');
-    adminToggle.className = `sidebar-group-toggle${isAdminPath ? ' open' : ''}`;
-    adminToggle.dataset['group'] = 'admin';
-    adminToggle.innerHTML = `<span>Панель управления</span><span class="toggle-arrow">›</span>`;
-
-    const adminItems = document.createElement('div');
-    adminItems.className = `sidebar-group-items${isAdminPath ? ' open' : ''}`;
-    adminItems.id = 'group-admin';
-
-    adminItems.appendChild(makeSubgroup('finance', 'Финансы', financeOpen, [
-      makeItem('Мотивация',             '/admin#motivation',          true),
-      makeItem('Проверить результаты',  '/admin/motivation/review',   true),
-      makeItem('Ставки',                '/admin#rates',               true),
-    ]));
-
-    adminItems.appendChild(makeSubgroup('managers', 'Управляющие', managersOpen, [
-      makeItem('График',              '/schedule/overview',          true),
-      makeItem('Шаблоны проектов',   '/admin/projects/templates',   true),
-      makeItem('Назначения',          '/admin/projects/assignments', true),
-    ]));
-
-    adminItems.appendChild(makeSubgroup('pix', 'PiX', pixOpen, [
-      makeItem('Сотрудники', '/admin#employees',   true),
-      makeItem('Отделы',     '/admin#departments', true),
-      makeItem('Контакты',   '/admin#contacts',    true),
-      makeItem('Доступы',    '/admin#access',      true),
-    ]));
-
+    const nav = document.createElement('nav');
+    nav.className = 'sidebar-nav';
+    nav.appendChild(makeItem('Главная',     '/',             IC.home));
+    nav.appendChild(makeItem('Пиццерии',   '/pizzerias',    IC.pizza));
     if (isSuperAdmin()) {
-      adminItems.appendChild(makeSubgroup('system', 'Система', systemOpen, [
-        makeItem('Пользователи',   '/admin#users',  true),
-        makeItem('Главная страница', '/admin/home', true),
-      ]));
+      nav.appendChild(makeItem('Пользователи', '/users', IC.users));
     }
-
-    adminToggle.addEventListener('click', () => {
-      const isOpen = adminItems.classList.contains('open');
-      adminItems.classList.toggle('open', !isOpen);
-      adminToggle.classList.toggle('open', !isOpen);
-    });
-
-    nav.appendChild(adminToggle);
-    nav.appendChild(adminItems);
-
+    nav.appendChild(makeItem('Контакты',   '/contacts',     IC.contacts));
+    nav.appendChild(makeItem('Ставки',     '/rates',        IC.rates));
+    nav.appendChild(makeItem('Доступы',    '/credentials',  IC.credentials));
+    nav.appendChild(makeItem('Мотивация',  '/motivation',   IC.motivation));
     return nav;
   }
 
-  let navEl = buildNav();
-  aside.appendChild(navEl);
+  function buildFooter(): HTMLElement {
+    const footer = document.createElement('div');
+    footer.className = 'sidebar-footer';
 
-  // Re-render nav on navigation
-  const navListener = () => {
-    const newNav = buildNav();
-    aside.replaceChild(newNav, navEl);
-    navEl = newNav;
-    onUpdate(newNav);
-  };
-  window.addEventListener('pix:navigate' as any, navListener);
+    // Pizzeria switcher
+    const switcherLabel = document.createElement('div');
+    switcherLabel.style.cssText = 'font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;padding:0 2px 4px;';
+    switcherLabel.textContent = 'Активная пиццерия';
+    footer.appendChild(switcherLabel);
+    footer.appendChild(buildPizzeriaSwitcher('block'));
 
-  // Footer: user info + theme + logout
-  const footer = document.createElement('div');
-  footer.className = 'sidebar-footer';
+    const divider = document.createElement('div');
+    divider.style.cssText = 'height:1px;background:var(--border);margin:10px 0;';
+    footer.appendChild(divider);
 
-  const u = getUser()!;
-  const userInfo = document.createElement('div');
-  userInfo.style.cssText = 'padding:8px 10px 4px;';
-  userInfo.innerHTML = `
-    <div style="font-size:12px;font-weight:600;color:var(--text-primary);">${u.name}</div>
-    <div style="font-size:11px;color:#9ca3af;">${roleLabel(u.role)}</div>
-  `;
-  footer.appendChild(userInfo);
+    const u = getUser()!;
+    const userInfo = document.createElement('div');
+    userInfo.style.cssText = 'padding:0 2px 8px;';
+    const displayRole = u.jobTitle || roleLabel(u.role);
+    userInfo.innerHTML = `
+      <div style="font-size:12px;font-weight:600;color:var(--text-primary);">${u.name}</div>
+      <div style="font-size:11px;color:var(--text-muted);">${displayRole}</div>
+    `;
+    footer.appendChild(userInfo);
 
-  const themeBtn = document.createElement('button');
-  themeBtn.id = 'theme-toggle';
-  themeBtn.className = 'sidebar-item';
-  themeBtn.innerHTML = `<span class="sidebar-icon">${IC.moon}</span><span>Тема</span>`;
-  themeBtn.addEventListener('click', () => toggleTheme());
-  updateToggleButton();
-  footer.appendChild(themeBtn);
+    const themeBtn = document.createElement('button');
+    themeBtn.id        = 'theme-toggle';
+    themeBtn.className = 'sidebar-item';
+    themeBtn.title     = 'Тема';
+    themeBtn.innerHTML = `<span class="sidebar-icon theme-icon-slot">${IC.moon}</span><span>Тема</span>`;
+    themeBtn.addEventListener('click', toggleTheme);
+    footer.appendChild(themeBtn);
 
-  const logoutBtn = document.createElement('button');
-  logoutBtn.className = 'sidebar-item';
-  logoutBtn.innerHTML = `<span class="sidebar-icon">${IC.logout}</span><span>Выйти</span>`;
-  logoutBtn.addEventListener('click', () => { logout(); renderHeader(); navigate('/login'); });
-  footer.appendChild(logoutBtn);
+    const logoutBtn = document.createElement('button');
+    logoutBtn.className = 'sidebar-item';
+    logoutBtn.innerHTML = `<span class="sidebar-icon">${IC.logout}</span><span>Выйти</span>`;
+    logoutBtn.addEventListener('click', () => {
+      logout();
+      rebuildHeader();
+      navigate('/login');
+    });
+    footer.appendChild(logoutBtn);
 
+    return footer;
+  }
+
+  let nav    = buildNav();
+  let footer = buildFooter();
+  aside.appendChild(nav);
   aside.appendChild(footer);
+
+  window.addEventListener('pix:navigate' as any, () => {
+    const newNav = buildNav();
+    aside.replaceChild(newNav, nav);
+    nav = newNav;
+  });
+
+  window.addEventListener('pix:pizzeria-changed', () => {
+    const newFooter = buildFooter();
+    aside.replaceChild(newFooter, footer);
+    footer = newFooter;
+    updateToggleButton();
+  });
+
   return aside;
 }
 
-// ── Horizontal header ─────────────────────────────────────────────────────────
-function buildHorizontalHeader(_container: HTMLElement): HTMLElement {
+// ── Horizontal header (manager / shift_manager) ────────────────────────────────
+function buildHorizontalHeader(): HTMLElement {
   const header = document.createElement('header');
 
   function render(): void {
-    const user    = getUser();
-    const curPath = window.location.pathname;
-    const mgmt    = isManagement();
+    const u           = getUser();
+    const activePiz   = getAllPizzerias().find(p => p.id === getActivePizzeriaId());
+    const pizzName    = activePiz?.name ?? '';
 
-    const navHtml = NAV_LINKS
-      .filter(l => !(l.managerOnly && mgmt))
-      .map(l => {
-        const path   = mgmt && l.managementPath ? l.managementPath : l.path;
-        const active = curPath === path || curPath === l.path;
-        return `<button class="header-nav-link${active ? ' active' : ''}" data-path="${path}">${l.label}</button>`;
-      }).join('');
-
-    const userArea = user
-      ? `<div class="header-right">
-           <button id="theme-toggle" class="theme-btn" title="Тема">${IC.moon}</button>
-           ${isManagement() ? `<button class="btn btn-ghost" style="font-size:13px;padding:6px 12px;" id="header-admin">Панель</button>` : ''}
-           <div style="text-align:right;line-height:1.3;">
-             <div class="user-name">${user.name}</div>
-             <div class="user-role">${roleLabel(user.role)}</div>
-           </div>
-           <button class="btn btn-outline" style="padding:7px 14px;font-size:13px;" id="header-logout">Выйти</button>
-         </div>`
-      : `<div class="header-right">
-           <button id="theme-toggle" class="theme-btn" title="Тема">${IC.moon}</button>
-           <button class="btn btn-primary" style="padding:8px 18px;font-size:14px;" id="header-login">Войти</button>
-         </div>`;
+    const switcherPart = getAllPizzerias().length > 1
+      ? ''  // built dynamically below
+      : `<span style="font-size:14px;font-weight:600;color:var(--text-primary);">${pizzName}</span>`;
 
     header.innerHTML = `
       <div class="header-inner">
-        <div class="header-logo" id="header-logo">
+        <div class="header-logo" id="h-logo" style="cursor:pointer;">
           <div class="logo-mark">PiX</div>
           <div>
             <span class="logo-name">PiX</span>
-            <span class="logo-sub">Dodo Pizza · Внутренняя сеть</span>
+            <span class="logo-sub">${pizzName}</span>
           </div>
         </div>
-        <nav class="header-nav">${navHtml}</nav>
-        ${userArea}
+        <div id="h-center">${switcherPart}</div>
+        <div class="header-right">
+          ${u ? `<div style="text-align:right;line-height:1.3;">
+            <div class="user-name">${u.name}</div>
+            <div class="user-role">${u.jobTitle || roleLabel(u.role)}</div>
+          </div>` : ''}
+          <button id="theme-toggle" class="theme-btn" title="Тема"><span class="theme-icon-slot">${IC.moon}</span></button>
+          <button class="btn btn-outline" style="padding:7px 14px;font-size:13px;" id="h-logout">Выйти</button>
+        </div>
       </div>
     `;
 
-    header.querySelector('#header-logo')!.addEventListener('click', () => navigate('/'));
-    header.querySelectorAll<HTMLButtonElement>('.header-nav-link').forEach(btn => {
-      btn.addEventListener('click', () => { navigate(btn.dataset['path']!); render(); });
-    });
-    const themeBtn = header.querySelector('#theme-toggle');
-    if (themeBtn) { updateToggleButton(); themeBtn.addEventListener('click', () => toggleTheme()); }
-    header.querySelector('#header-login')?.addEventListener('click', () => navigate('/login'));
-    header.querySelector('#header-admin')?.addEventListener('click', () => navigate('/admin'));
-    header.querySelector('#header-logout')?.addEventListener('click', () => {
+    header.querySelector('#h-logo')!.addEventListener('click', () => navigate('/'));
+    header.querySelector('#theme-toggle')!.addEventListener('click', toggleTheme);
+    header.querySelector('#h-logout')?.addEventListener('click', () => {
       logout();
-      renderHeader();  // triggers container re-render
+      rebuildHeader();
       navigate('/login');
     });
 
-    window.addEventListener('pix:navigate' as any, render, { once: true });
+    // Build pizzeria switcher if multiple
+    if (getAllPizzerias().length > 1) {
+      const center = header.querySelector('#h-center')!;
+      center.appendChild(buildPizzeriaSwitcher('inline'));
+    }
+
+    updateToggleButton();
   }
 
   render();
 
-  // Expose re-render for container
-  (header as any).__rerender = () => render();
+  window.addEventListener('pix:navigate' as any, render, { once: false });
+  window.addEventListener('pix:pizzeria-changed', render);
+
   return header;
 }
 
-// ── Main export ───────────────────────────────────────────────────────────────
+// ── Container ──────────────────────────────────────────────────────────────────
 let _container: HTMLElement | null = null;
 
 export function renderHeader(): HTMLElement {
@@ -281,24 +232,29 @@ export function renderHeader(): HTMLElement {
     _container = document.createElement('div');
     _container.id = 'header-root';
   }
-  _buildHeader();
+  rebuildHeader();
   return _container;
 }
 
-function _buildHeader(): void {
+export function rebuildHeader(): void {
   if (!_container) return;
   const user = getUser();
   const mgmt = isManagement();
 
-  if (user && mgmt) {
+  _container.innerHTML = '';
+
+  if (!user) {
+    document.body.classList.remove('sidebar-mode');
+    return;
+  }
+
+  if (mgmt) {
     document.body.classList.add('sidebar-mode');
-    _container.innerHTML = '';
-    const sidebar = buildSidebar(() => {/* nav updated */});
-    _container.appendChild(sidebar);
+    _container.appendChild(buildSidebar());
   } else {
     document.body.classList.remove('sidebar-mode');
-    _container.innerHTML = '';
-    const header = buildHorizontalHeader(_container);
-    _container.appendChild(header);
+    _container.appendChild(buildHorizontalHeader());
   }
+
+  updateToggleButton();
 }

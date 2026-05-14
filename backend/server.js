@@ -51,6 +51,49 @@ db.exec(`
     FOREIGN KEY (user_id)     REFERENCES users(id)     ON DELETE CASCADE,
     FOREIGN KEY (pizzeria_id) REFERENCES pizzerias(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS contacts (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    pizzeria_id INTEGER NOT NULL REFERENCES pizzerias(id) ON DELETE CASCADE,
+    category    TEXT NOT NULL,
+    name        TEXT NOT NULL,
+    phone       TEXT,
+    email       TEXT,
+    notes       TEXT,
+    created_at  TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS rates (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    pizzeria_id    INTEGER NOT NULL REFERENCES pizzerias(id) ON DELETE CASCADE,
+    position       TEXT NOT NULL,
+    hourly_rate    INTEGER,
+    monthly_salary INTEGER,
+    notes          TEXT,
+    created_at     TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS credentials (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    pizzeria_id  INTEGER NOT NULL REFERENCES pizzerias(id) ON DELETE CASCADE,
+    service_name TEXT NOT NULL,
+    login        TEXT,
+    password     TEXT,
+    url          TEXT,
+    notes        TEXT,
+    created_at   TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS motivation (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    pizzeria_id  INTEGER NOT NULL REFERENCES pizzerias(id) ON DELETE CASCADE,
+    metric_name  TEXT NOT NULL,
+    threshold    INTEGER NOT NULL,
+    bonus_amount INTEGER NOT NULL,
+    description  TEXT,
+    is_active    INTEGER DEFAULT 1,
+    created_at   TEXT DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 // ── Superadmin seed ────────────────────────────────────────────────────────────
@@ -412,6 +455,147 @@ app.delete('/api/users/:id', authMiddleware, requireRole('superadmin'), (req, re
     return res.status(403).json({ error: 'Нельзя удалить суперадмина' });
   }
   db.prepare("DELETE FROM users WHERE id = ?").run(req.params.id);
+  res.json({ success: true });
+});
+
+// ── Pizzeria access helper ─────────────────────────────────────────────────────
+function requirePizzeriaAccess(req, res, next) {
+  const pizzeriaId = parseInt(req.params.pizzeriaId);
+  if (isNaN(pizzeriaId)) return res.status(400).json({ error: 'Invalid pizzeriaId' });
+
+  if (req.user.role === 'superadmin') { req.pizzeriaId = pizzeriaId; return next(); }
+
+  const allowed = db.prepare("SELECT 1 FROM user_pizzerias WHERE user_id = ? AND pizzeria_id = ?")
+    .get(req.user.id, pizzeriaId);
+  if (!allowed) return res.status(403).json({ error: 'Forbidden' });
+
+  req.pizzeriaId = pizzeriaId;
+  next();
+}
+
+// ── Contacts ───────────────────────────────────────────────────────────────────
+
+app.get('/api/pizzerias/:pizzeriaId/contacts', authMiddleware, requirePizzeriaAccess, (req, res) => {
+  res.json(db.prepare("SELECT * FROM contacts WHERE pizzeria_id = ? ORDER BY category, name").all(req.pizzeriaId));
+});
+
+app.post('/api/pizzerias/:pizzeriaId/contacts', authMiddleware, requirePizzeriaAccess, (req, res) => {
+  const { category, name, phone, email, notes } = req.body;
+  if (!category || !name) return res.status(400).json({ error: 'category и name обязательны' });
+  const r = db.prepare(
+    "INSERT INTO contacts (pizzeria_id, category, name, phone, email, notes) VALUES (?, ?, ?, ?, ?, ?)"
+  ).run(req.pizzeriaId, category, name, phone || null, email || null, notes || null);
+  res.status(201).json(db.prepare("SELECT * FROM contacts WHERE id = ?").get(r.lastInsertRowid));
+});
+
+app.put('/api/pizzerias/:pizzeriaId/contacts/:id', authMiddleware, requirePizzeriaAccess, (req, res) => {
+  const row = db.prepare("SELECT id FROM contacts WHERE id = ? AND pizzeria_id = ?").get(req.params.id, req.pizzeriaId);
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  const { category, name, phone, email, notes } = req.body;
+  db.prepare("UPDATE contacts SET category=?, name=?, phone=?, email=?, notes=? WHERE id=?")
+    .run(category, name, phone || null, email || null, notes || null, req.params.id);
+  res.json(db.prepare("SELECT * FROM contacts WHERE id = ?").get(req.params.id));
+});
+
+app.delete('/api/pizzerias/:pizzeriaId/contacts/:id', authMiddleware, requirePizzeriaAccess, (req, res) => {
+  const row = db.prepare("SELECT id FROM contacts WHERE id = ? AND pizzeria_id = ?").get(req.params.id, req.pizzeriaId);
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  db.prepare("DELETE FROM contacts WHERE id = ?").run(req.params.id);
+  res.json({ success: true });
+});
+
+// ── Rates ──────────────────────────────────────────────────────────────────────
+
+app.get('/api/pizzerias/:pizzeriaId/rates', authMiddleware, requirePizzeriaAccess, (req, res) => {
+  res.json(db.prepare("SELECT * FROM rates WHERE pizzeria_id = ? ORDER BY position").all(req.pizzeriaId));
+});
+
+app.post('/api/pizzerias/:pizzeriaId/rates', authMiddleware, requirePizzeriaAccess, (req, res) => {
+  const { position, hourly_rate, monthly_salary, notes } = req.body;
+  if (!position) return res.status(400).json({ error: 'position обязателен' });
+  const r = db.prepare(
+    "INSERT INTO rates (pizzeria_id, position, hourly_rate, monthly_salary, notes) VALUES (?, ?, ?, ?, ?)"
+  ).run(req.pizzeriaId, position, hourly_rate ?? null, monthly_salary ?? null, notes || null);
+  res.status(201).json(db.prepare("SELECT * FROM rates WHERE id = ?").get(r.lastInsertRowid));
+});
+
+app.put('/api/pizzerias/:pizzeriaId/rates/:id', authMiddleware, requirePizzeriaAccess, (req, res) => {
+  const row = db.prepare("SELECT id FROM rates WHERE id = ? AND pizzeria_id = ?").get(req.params.id, req.pizzeriaId);
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  const { position, hourly_rate, monthly_salary, notes } = req.body;
+  db.prepare("UPDATE rates SET position=?, hourly_rate=?, monthly_salary=?, notes=? WHERE id=?")
+    .run(position, hourly_rate ?? null, monthly_salary ?? null, notes || null, req.params.id);
+  res.json(db.prepare("SELECT * FROM rates WHERE id = ?").get(req.params.id));
+});
+
+app.delete('/api/pizzerias/:pizzeriaId/rates/:id', authMiddleware, requirePizzeriaAccess, (req, res) => {
+  const row = db.prepare("SELECT id FROM rates WHERE id = ? AND pizzeria_id = ?").get(req.params.id, req.pizzeriaId);
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  db.prepare("DELETE FROM rates WHERE id = ?").run(req.params.id);
+  res.json({ success: true });
+});
+
+// ── Credentials ────────────────────────────────────────────────────────────────
+
+app.get('/api/pizzerias/:pizzeriaId/credentials', authMiddleware, requirePizzeriaAccess, (req, res) => {
+  res.json(db.prepare("SELECT * FROM credentials WHERE pizzeria_id = ? ORDER BY service_name").all(req.pizzeriaId));
+});
+
+app.post('/api/pizzerias/:pizzeriaId/credentials', authMiddleware, requirePizzeriaAccess, (req, res) => {
+  const { service_name, login, password, url, notes } = req.body;
+  if (!service_name) return res.status(400).json({ error: 'service_name обязателен' });
+  const r = db.prepare(
+    "INSERT INTO credentials (pizzeria_id, service_name, login, password, url, notes) VALUES (?, ?, ?, ?, ?, ?)"
+  ).run(req.pizzeriaId, service_name, login || null, password || null, url || null, notes || null);
+  res.status(201).json(db.prepare("SELECT * FROM credentials WHERE id = ?").get(r.lastInsertRowid));
+});
+
+app.put('/api/pizzerias/:pizzeriaId/credentials/:id', authMiddleware, requirePizzeriaAccess, (req, res) => {
+  const row = db.prepare("SELECT id FROM credentials WHERE id = ? AND pizzeria_id = ?").get(req.params.id, req.pizzeriaId);
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  const { service_name, login, password, url, notes } = req.body;
+  db.prepare("UPDATE credentials SET service_name=?, login=?, password=?, url=?, notes=? WHERE id=?")
+    .run(service_name, login || null, password || null, url || null, notes || null, req.params.id);
+  res.json(db.prepare("SELECT * FROM credentials WHERE id = ?").get(req.params.id));
+});
+
+app.delete('/api/pizzerias/:pizzeriaId/credentials/:id', authMiddleware, requirePizzeriaAccess, (req, res) => {
+  const row = db.prepare("SELECT id FROM credentials WHERE id = ? AND pizzeria_id = ?").get(req.params.id, req.pizzeriaId);
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  db.prepare("DELETE FROM credentials WHERE id = ?").run(req.params.id);
+  res.json({ success: true });
+});
+
+// ── Motivation ─────────────────────────────────────────────────────────────────
+
+app.get('/api/pizzerias/:pizzeriaId/motivation', authMiddleware, requirePizzeriaAccess, (req, res) => {
+  res.json(db.prepare("SELECT * FROM motivation WHERE pizzeria_id = ? ORDER BY metric_name").all(req.pizzeriaId));
+});
+
+app.post('/api/pizzerias/:pizzeriaId/motivation', authMiddleware, requirePizzeriaAccess, (req, res) => {
+  const { metric_name, threshold, bonus_amount, description, is_active } = req.body;
+  if (!metric_name || threshold == null || bonus_amount == null) {
+    return res.status(400).json({ error: 'metric_name, threshold, bonus_amount обязательны' });
+  }
+  const r = db.prepare(
+    "INSERT INTO motivation (pizzeria_id, metric_name, threshold, bonus_amount, description, is_active) VALUES (?, ?, ?, ?, ?, ?)"
+  ).run(req.pizzeriaId, metric_name, threshold, bonus_amount, description || null, is_active != null ? (is_active ? 1 : 0) : 1);
+  res.status(201).json(db.prepare("SELECT * FROM motivation WHERE id = ?").get(r.lastInsertRowid));
+});
+
+app.put('/api/pizzerias/:pizzeriaId/motivation/:id', authMiddleware, requirePizzeriaAccess, (req, res) => {
+  const row = db.prepare("SELECT id FROM motivation WHERE id = ? AND pizzeria_id = ?").get(req.params.id, req.pizzeriaId);
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  const { metric_name, threshold, bonus_amount, description, is_active } = req.body;
+  db.prepare("UPDATE motivation SET metric_name=?, threshold=?, bonus_amount=?, description=?, is_active=? WHERE id=?")
+    .run(metric_name, threshold, bonus_amount, description || null, is_active ? 1 : 0, req.params.id);
+  res.json(db.prepare("SELECT * FROM motivation WHERE id = ?").get(req.params.id));
+});
+
+app.delete('/api/pizzerias/:pizzeriaId/motivation/:id', authMiddleware, requirePizzeriaAccess, (req, res) => {
+  const row = db.prepare("SELECT id FROM motivation WHERE id = ? AND pizzeria_id = ?").get(req.params.id, req.pizzeriaId);
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  db.prepare("DELETE FROM motivation WHERE id = ?").run(req.params.id);
   res.json({ success: true });
 });
 

@@ -1,135 +1,189 @@
-import { navigate } from '../router';
-import { getRateDocuments } from '../services/storage';
-import { filterByPizzeria } from '../services/auth';
-import type { RateDocument } from '../types';
+import { getActivePizzeria } from '../services/pizzeriaContext';
+import { getRates, createRate, updateRate, deleteRate, RATE_POSITIONS } from '../services/rates';
+import type { Rate } from '../services/rates';
 
 export function renderRates(): HTMLElement {
   const page = document.createElement('div');
-  page.className = 'page-enter';
+  page.style.cssText = 'padding:32px 40px;';
 
-  let selectedId: string | null = null;
+  const activePiz = getActivePizzeria();
+  if (!activePiz) {
+    page.innerHTML = `<div style="padding:60px;text-align:center;color:var(--text-muted);">Нет активной пиццерии</div>`;
+    return page;
+  }
 
-  function render(): void { page.replaceChildren(buildContent()); }
+  let items: Rate[] = [];
 
-  function buildContent(): HTMLElement {
+  async function load(): Promise<void> {
+    page.innerHTML = `<div style="color:var(--text-muted);padding:40px 0;">Загрузка...</div>`;
+    try {
+      items = await getRates();
+      render();
+    } catch {
+      page.innerHTML = `<div style="color:var(--text-muted);padding:40px 0;">Ошибка загрузки</div>`;
+    }
+  }
+
+  function render(): void { page.replaceChildren(buildLayout()); }
+
+  function buildLayout(): HTMLElement {
     const wrap = document.createElement('div');
-    const docs  = filterByPizzeria(getRateDocuments());
 
-    if (docs.length > 0 && !selectedId) selectedId = docs[0].id;
-    const selectedDoc = docs.find(d => d.id === selectedId) ?? null;
-
-    const pillsHtml = docs.map(d => `
-      <button class="filter-pill" data-id="${d.id}" style="
-        padding:6px 14px;font-size:13px;font-weight:500;border-radius:20px;cursor:pointer;
-        border:1px solid ${selectedId === d.id ? 'var(--accent)' : '#e5e7eb'};
-        background:${selectedId === d.id ? 'var(--accent)' : '#fff'};
-        color:${selectedId === d.id ? '#fff' : '#374151'};
-        transition:all 0.15s;
-      ">${d.pizzeria}</button>
-    `).join('');
-
-    wrap.innerHTML = `
-      <div class="container">
-        <section style="padding:40px 0 64px;">
-          <button class="btn btn-ghost" id="back-btn" style="margin-bottom:24px;">← Назад</button>
-          <div style="margin-bottom:32px;">
-            <div style="font-size:11px;font-weight:600;letter-spacing:0.12em;color:#6b7280;text-transform:uppercase;margin-bottom:8px;">HR</div>
-            <h1 style="font-size:28px;font-weight:700;letter-spacing:-0.02em;">Система оплаты труда</h1>
-          </div>
-          ${docs.length > 0 ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:32px;" id="pills-row">${pillsHtml}</div>` : ''}
-          <div id="doc-content"></div>
-        </section>
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;';
+    hdr.innerHTML = `
+      <div>
+        <h1 style="font-size:24px;font-weight:700;letter-spacing:-0.02em;">Ставки</h1>
+        <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">${activePiz!.name}</div>
       </div>
     `;
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn btn-primary';
+    addBtn.textContent = '+ Добавить ставку';
+    addBtn.addEventListener('click', () => showModal(null));
+    hdr.appendChild(addBtn);
+    wrap.appendChild(hdr);
 
-    wrap.querySelector('#back-btn')!.addEventListener('click', () => navigate('/'));
-
-    wrap.querySelectorAll<HTMLButtonElement>('.filter-pill').forEach(btn => {
-      btn.addEventListener('click', () => { selectedId = btn.dataset['id']!; render(); });
-    });
-
-    const docContent = wrap.querySelector('#doc-content')!;
-    if (docs.length === 0) {
-      docContent.innerHTML = `
-        <div style="text-align:center;padding:80px 20px;">
-          <div style="font-size:16px;font-weight:600;margin-bottom:8px;color:#374151;">Данные ещё не добавлены</div>
-          <div style="font-size:14px;color:#9ca3af;">Перейдите в Админку чтобы добавить документ ставок</div>
-        </div>
-      `;
-    } else if (selectedDoc) {
-      docContent.appendChild(renderDocument(selectedDoc));
+    if (items.length === 0) {
+      const empty = document.createElement('div');
+      empty.style.cssText = 'text-align:center;padding:80px;color:var(--text-muted);font-size:15px;';
+      empty.textContent = 'Ставок нет.';
+      wrap.appendChild(empty);
+      return wrap;
     }
 
+    const card = document.createElement('div');
+    card.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;box-shadow:var(--shadow-sm);';
+
+    const table = document.createElement('table');
+    table.innerHTML = `<thead><tr>
+      <th>Должность</th><th>Часовая ставка</th><th>Оклад</th><th>Заметки</th><th></th>
+    </tr></thead>`;
+
+    const tbody = document.createElement('tbody');
+    items.forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="font-weight:600;">${esc(r.position)}</td>
+        <td style="color:var(--text-secondary);">${r.hourly_rate != null ? r.hourly_rate + ' ₽/ч' : '—'}</td>
+        <td style="color:var(--text-secondary);">${r.monthly_salary != null ? r.monthly_salary + ' ₽/мес' : '—'}</td>
+        <td style="color:var(--text-muted);font-size:13px;">${r.notes ? esc(r.notes) : ''}</td>
+        <td>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-outline" style="padding:5px 12px;font-size:12px;" data-action="edit" data-id="${r.id}">Изменить</button>
+            <button class="btn btn-outline" style="padding:5px 12px;font-size:12px;color:var(--text-muted);" data-action="delete" data-id="${r.id}">Удалить</button>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+
+    table.addEventListener('click', async e => {
+      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-action]');
+      if (!btn) return;
+      const id = parseInt(btn.dataset['id']!);
+      if (btn.dataset['action'] === 'edit') {
+        showModal(items.find(r => r.id === id) ?? null);
+      } else if (btn.dataset['action'] === 'delete') {
+        if (!confirm('Удалить ставку?')) return;
+        btn.disabled = true;
+        await deleteRate(id);
+        await load();
+      }
+    });
+
+    card.appendChild(table);
+    wrap.appendChild(card);
     return wrap;
   }
 
-  function renderDocument(doc: RateDocument): HTMLElement {
-    const el = document.createElement('div');
+  function showModal(item: Rate | null): void {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;';
 
-    if (doc.title) {
-      const h = document.createElement('div');
-      h.style.cssText = 'font-size:18px;font-weight:700;color:#111;margin-bottom:24px;';
-      h.textContent = doc.title;
-      el.appendChild(h);
-    }
+    const modal = document.createElement('div');
+    modal.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:28px;width:100%;max-width:440px;box-shadow:var(--shadow-md);';
 
-    doc.sections.forEach(sec => {
-      const secEl = document.createElement('div');
-      secEl.className = 'rate-section';
+    const posOptions = RATE_POSITIONS.map(p =>
+      `<option value="${p}" ${item?.position === p ? 'selected' : ''}>${p}</option>`
+    ).join('');
 
-      const secTitle = document.createElement('div');
-      secTitle.className = 'rate-section-title';
-      secTitle.textContent = sec.title;
-      secEl.appendChild(secTitle);
+    modal.innerHTML = `
+      <h2 style="font-size:18px;font-weight:700;margin-bottom:20px;">${item ? 'Редактировать ставку' : 'Новая ставка'}</h2>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div>
+          <label style="display:block;font-size:13px;font-weight:500;color:var(--text-secondary);margin-bottom:5px;">Должность *</label>
+          <input id="m-pos" type="text" list="pos-list" value="${esc(item?.position ?? '')}" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-family:inherit;background:var(--bg-input);color:var(--text-primary);outline:none;">
+          <datalist id="pos-list">${posOptions}</datalist>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label style="display:block;font-size:13px;font-weight:500;color:var(--text-secondary);margin-bottom:5px;">Часовая ставка (₽)</label>
+            <input id="m-hourly" type="number" min="0" value="${item?.hourly_rate ?? ''}" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-family:inherit;background:var(--bg-input);color:var(--text-primary);outline:none;">
+          </div>
+          <div>
+            <label style="display:block;font-size:13px;font-weight:500;color:var(--text-secondary);margin-bottom:5px;">Оклад (₽/мес)</label>
+            <input id="m-salary" type="number" min="0" value="${item?.monthly_salary ?? ''}" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-family:inherit;background:var(--bg-input);color:var(--text-primary);outline:none;">
+          </div>
+        </div>
+        <div>
+          <label style="display:block;font-size:13px;font-weight:500;color:var(--text-secondary);margin-bottom:5px;">Заметки</label>
+          <textarea id="m-notes" rows="2" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-family:inherit;background:var(--bg-input);color:var(--text-primary);outline:none;resize:vertical;">${esc(item?.notes ?? '')}</textarea>
+        </div>
+        <div id="m-err" style="color:#ef4444;font-size:13px;display:none;"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+          <button class="btn btn-outline" id="m-cancel">Отмена</button>
+          <button class="btn btn-primary" id="m-save">Сохранить</button>
+        </div>
+      </div>
+    `;
 
-      sec.tables.forEach(table => {
-        if (table.title) {
-          const tTitle = document.createElement('div');
-          tTitle.style.cssText = 'font-size:14px;font-weight:600;color:#374151;margin-bottom:8px;';
-          tTitle.textContent = table.title;
-          secEl.appendChild(tTitle);
-        }
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
 
-        const tableEl = document.createElement('table');
-        tableEl.className = 'rate-table';
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    modal.querySelector('#m-cancel')!.addEventListener('click', close);
+    modal.querySelector('#m-save')!.addEventListener('click', async () => {
+      const errEl   = modal.querySelector<HTMLElement>('#m-err')!;
+      const saveBtn = modal.querySelector<HTMLButtonElement>('#m-save')!;
+      const pos     = (modal.querySelector<HTMLInputElement>('#m-pos')!).value.trim();
+      const hourly  = (modal.querySelector<HTMLInputElement>('#m-hourly')!).value;
+      const salary  = (modal.querySelector<HTMLInputElement>('#m-salary')!).value;
+      const notes   = (modal.querySelector<HTMLTextAreaElement>('#m-notes')!).value.trim();
 
-        const tbody = document.createElement('tbody');
-        table.rows.forEach(row => {
-          const tr = document.createElement('tr');
-          const hl = row.cells[0]?.highlight;
-          if (hl === 'orange') tr.className = 'highlight-orange';
-          else if (hl === 'dark') tr.className = 'highlight-dark';
+      if (!pos) { errEl.textContent = 'Должность обязательна'; errEl.style.display = 'block'; return; }
 
-          row.cells.forEach(cell => {
-            const td = document.createElement(row.isHeader ? 'th' : 'td');
-            td.textContent = cell.value;
-            if (cell.bold)    td.style.fontWeight = '700';
-            if (cell.align)   td.style.textAlign   = cell.align;
-            if (cell.colspan) td.colSpan = cell.colspan;
-            if (cell.rowspan) td.rowSpan = cell.rowspan;
-            tr.appendChild(td);
-          });
+      errEl.style.display = 'none';
+      saveBtn.disabled    = true;
+      saveBtn.textContent = 'Сохранение...';
 
-          tbody.appendChild(tr);
-        });
-
-        tableEl.appendChild(tbody);
-        secEl.appendChild(tableEl);
-
-        if (table.note) {
-          const noteEl = document.createElement('div');
-          noteEl.className = 'rate-note';
-          noteEl.textContent = table.note;
-          secEl.appendChild(noteEl);
-        }
-      });
-
-      el.appendChild(secEl);
+      try {
+        const data = {
+          position:       pos,
+          hourly_rate:    hourly  ? parseInt(hourly)  : null,
+          monthly_salary: salary  ? parseInt(salary)  : null,
+          notes:          notes   || null,
+        };
+        if (item) await updateRate(item.id, data);
+        else await createRate(data);
+        close();
+        await load();
+      } catch (err) {
+        errEl.textContent   = (err as Error).message;
+        errEl.style.display = 'block';
+        saveBtn.disabled    = false;
+        saveBtn.textContent = 'Сохранить';
+      }
     });
 
-    return el;
+    function close(): void { overlay.remove(); }
   }
 
-  page.appendChild(buildContent());
+  load();
   return page;
+}
+
+function esc(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
