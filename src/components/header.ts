@@ -105,11 +105,9 @@ function buildSidebar(): HTMLElement {
 
     const nav = document.createElement('nav');
     nav.className = 'sidebar-nav';
-    nav.appendChild(makeItem('Главная',     '/',             IC.home));
-    nav.appendChild(makeItem('Пиццерии',   '/pizzerias',    IC.pizza));
-    if (isSuperAdmin()) {
-      nav.appendChild(makeItem('Пользователи', '/users', IC.users));
-    }
+    nav.appendChild(makeItem('Главная', '/', IC.home));
+    if (isManagement() || canRead('pizzerias'))                  nav.appendChild(makeItem('Пиццерии',  '/pizzerias',   IC.pizza));
+    if (isSuperAdmin())                                          nav.appendChild(makeItem('Пользователи', '/users',   IC.users));
     if (canRead('contacts'))                                     nav.appendChild(makeItem('Контакты',  '/contacts',    IC.contacts));
     if (canRead('rates'))                                        nav.appendChild(makeItem('Ставки',    '/rates',       IC.rates));
     if (canRead('credentials'))                                  nav.appendChild(makeItem('Доступы',   '/credentials', IC.credentials));
@@ -186,92 +184,6 @@ function buildSidebar(): HTMLElement {
   return aside;
 }
 
-// ── Horizontal header (manager / shift_manager) ────────────────────────────────
-function buildHorizontalHeader(): HTMLElement {
-  const header = document.createElement('header');
-
-  function render(): void {
-    const u           = getUser();
-    const activePiz   = getAllPizzerias().find(p => p.id === getActivePizzeriaId());
-    const pizzName    = activePiz?.name ?? '';
-
-    const switcherPart = getAllPizzerias().length > 1
-      ? ''  // built dynamically below
-      : `<span style="font-size:14px;font-weight:600;color:var(--text-primary);">${pizzName}</span>`;
-
-    header.innerHTML = `
-      <div class="header-inner">
-        <div class="header-logo" id="h-logo" style="cursor:pointer;">
-          <div class="logo-mark">PiX</div>
-          <div>
-            <span class="logo-name">PiX</span>
-            <span class="logo-sub">${pizzName}</span>
-          </div>
-        </div>
-        <div id="h-center">${switcherPart}</div>
-        <div class="header-right">
-          ${u ? `<div style="text-align:right;line-height:1.3;">
-            <div class="user-name">${u.name}</div>
-            <div class="user-role">${u.jobTitle || roleLabel(u.role)}</div>
-          </div>` : ''}
-          <button id="theme-toggle" class="theme-btn" title="Тема"><span class="theme-icon-slot">${IC.moon}</span></button>
-          <button class="btn btn-outline" style="padding:7px 14px;font-size:13px;" id="h-logout">Выйти</button>
-        </div>
-      </div>
-    `;
-
-    header.querySelector('#h-logo')!.addEventListener('click', () => navigate('/'));
-    header.querySelector('#theme-toggle')!.addEventListener('click', toggleTheme);
-    header.querySelector('#h-logout')?.addEventListener('click', () => {
-      logout();
-      rebuildHeader();
-      navigate('/login');
-    });
-
-    // Build pizzeria switcher if multiple
-    if (getAllPizzerias().length > 1) {
-      const center = header.querySelector('#h-center')!;
-      center.appendChild(buildPizzeriaSwitcher('inline'));
-    }
-
-    // Nav links for manager/shift_manager
-    const nav = document.createElement('nav');
-    nav.style.cssText = 'display:flex;gap:2px;padding:0 16px 8px;border-top:1px solid var(--border);margin-top:4px;';
-    const makeNavLink = (label: string, path: string): HTMLElement => {
-      const a = document.createElement('a');
-      a.href = path;
-      const curPath = window.location.pathname;
-      const active  = curPath === path;
-      a.style.cssText = `
-        padding:5px 12px;font-size:13px;font-weight:${active ? '600' : '500'};
-        color:${active ? 'var(--accent)' : 'var(--text-secondary)'};
-        background:${active ? 'var(--accent-light)' : 'transparent'};
-        text-decoration:none;border-radius:var(--radius-sm);transition:background 0.1s,color 0.1s;
-      `;
-      a.textContent = label;
-      a.addEventListener('click', e => { e.preventDefault(); navigate(path); });
-      a.addEventListener('mouseenter', () => { if (!active) a.style.background = 'var(--bg-hover)'; });
-      a.addEventListener('mouseleave', () => { if (!active) a.style.background = 'transparent'; });
-      return a;
-    };
-    if (canRead('contacts'))    nav.appendChild(makeNavLink('Контакты',   '/contacts'));
-    if (canRead('rates'))       nav.appendChild(makeNavLink('Ставки',     '/rates'));
-    if (canRead('credentials')) nav.appendChild(makeNavLink('Доступы',    '/credentials'));
-    if (canRead('motivation'))  nav.appendChild(makeNavLink('Мотивация',  '/motivation'));
-    if (canRead('schedules_own')) nav.appendChild(makeNavLink('Мой график', '/schedule'));
-    header.appendChild(nav);
-
-    updateToggleButton();
-  }
-
-  render();
-
-  window.addEventListener('pix:navigate' as any, render, { once: false });
-  window.addEventListener('pix:pizzeria-changed', render);
-
-  return header;
-}
-
 // ── Container ──────────────────────────────────────────────────────────────────
 let _container: HTMLElement | null = null;
 
@@ -286,23 +198,14 @@ export function renderHeader(): HTMLElement {
 
 export function rebuildHeader(): void {
   if (!_container) return;
-  const user = getUser();
-  const mgmt = isManagement();
-
   _container.innerHTML = '';
 
-  if (!user) {
+  if (!getUser()) {
     document.body.classList.remove('sidebar-mode');
     return;
   }
 
-  if (mgmt) {
-    document.body.classList.add('sidebar-mode');
-    _container.appendChild(buildSidebar());
-  } else {
-    document.body.classList.remove('sidebar-mode');
-    _container.appendChild(buildHorizontalHeader());
-  }
-
+  document.body.classList.add('sidebar-mode');
+  _container.appendChild(buildSidebar());
   updateToggleButton();
 }
