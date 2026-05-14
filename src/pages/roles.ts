@@ -15,9 +15,9 @@ const PAGES: { key: string; label: string; locked?: boolean }[] = [
 ];
 
 const EDIT_ROLES: { key: string; label: string; color: string }[] = [
-  { key: 'management',    label: 'Руководство',     color: '#FF6900' },
-  { key: 'manager',       label: 'Управляющий',     color: '#0ea5e9' },
-  { key: 'shift_manager', label: 'Смен. менеджер',  color: '#8b5cf6' },
+  { key: 'management',    label: 'Руководство',    color: '#FF6900' },
+  { key: 'manager',       label: 'Управляющий',    color: '#0ea5e9' },
+  { key: 'shift_manager', label: 'Смен. менеджер', color: '#8b5cf6' },
 ];
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
@@ -27,8 +27,16 @@ const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: 'shift_manager', label: 'Сменный менеджер' },
 ];
 
+type PermLevel = 'none' | 'read' | 'full';
+
 interface PermRow { role: string; resource: string; can_read: number; can_write: number; }
 interface UserRow { id: number; name: string; email: string; role: Role; job_title: string | null; }
+
+function toLevel(can_read: number, can_write: number): PermLevel {
+  if (!can_read) return 'none';
+  if (!can_write) return 'read';
+  return 'full';
+}
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
@@ -56,7 +64,7 @@ function buildLayout(perms: PermRow[], users: UserRow[]): HTMLElement {
   hdr.style.cssText = 'margin-bottom:28px;';
   hdr.innerHTML = `
     <h1 style="font-size:24px;font-weight:700;letter-spacing:-0.02em;margin-bottom:4px;">Роли и доступы</h1>
-    <div style="font-size:13px;color:var(--text-muted);">Настройка доступа к страницам по ролям. Нет доступа — страница скрыта из меню.</div>
+    <div style="font-size:13px;color:var(--text-muted);">— нет доступа · Чтение — только просмотр · Полный — просмотр и редактирование</div>
   `;
   wrap.appendChild(hdr);
 
@@ -73,12 +81,12 @@ function buildLayout(perms: PermRow[], users: UserRow[]): HTMLElement {
 // ── Permission matrix ─────────────────────────────────────────────────────────
 
 function buildPermMatrix(initial: PermRow[]): HTMLElement {
-  const state = new Map<string, boolean>();
+  const state = new Map<string, PermLevel>();
   for (const r of EDIT_ROLES) {
     for (const pg of PAGES) {
       if (pg.locked) continue;
       const found = initial.find(p => p.role === r.key && p.resource === pg.key);
-      state.set(`${r.key}:${pg.key}`, !!found?.can_read);
+      state.set(`${r.key}:${pg.key}`, toLevel(found?.can_read ?? 0, found?.can_write ?? 0));
     }
   }
 
@@ -98,12 +106,12 @@ function buildPermMatrix(initial: PermRow[]): HTMLElement {
   // thead
   const thead = document.createElement('thead');
   let thHtml = `<tr>
-    <th style="text-align:left;padding:10px 16px;font-size:12px;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);width:40%;">Страница</th>
-    <th style="text-align:center;padding:10px 8px;font-size:12px;border-bottom:1px solid var(--border);">
+    <th style="text-align:left;padding:10px 16px;font-size:12px;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);">Страница</th>
+    <th style="text-align:center;padding:10px 8px;font-size:12px;border-bottom:1px solid var(--border);width:110px;">
       <div style="font-weight:700;color:#FF6900;">Суперадмин</div>
     </th>`;
   for (const role of EDIT_ROLES) {
-    thHtml += `<th style="text-align:center;padding:10px 8px;font-size:12px;border-bottom:1px solid var(--border);">
+    thHtml += `<th style="text-align:center;padding:10px 8px;font-size:12px;border-bottom:1px solid var(--border);width:160px;">
       <div style="font-weight:700;color:${role.color};">${role.label}</div>
     </th>`;
   }
@@ -118,51 +126,41 @@ function buildPermMatrix(initial: PermRow[]): HTMLElement {
     const tr = document.createElement('tr');
     tr.style.cssText = i % 2 === 0 ? '' : 'background:var(--bg-secondary);';
 
-    // Page label cell
     const labelTd = document.createElement('td');
-    labelTd.style.cssText = 'padding:9px 16px;font-size:13px;font-weight:600;color:var(--text-primary);';
+    labelTd.style.cssText = 'padding:10px 16px;font-size:13px;font-weight:600;color:var(--text-primary);';
     labelTd.textContent = pg.label;
     tr.appendChild(labelTd);
 
-    // Superadmin cell — always locked full access
+    // Superadmin — always full
     const saTd = document.createElement('td');
-    saTd.style.cssText = 'text-align:center;padding:9px 8px;';
-    saTd.innerHTML = lockedDot(true);
+    saTd.style.cssText = 'text-align:center;padding:8px;';
+    saTd.innerHTML = lockedBadge('full');
     tr.appendChild(saTd);
 
     if (pg.locked) {
-      // Superadmin-only — show locked dot for all other roles
       for (let _i = 0; _i < EDIT_ROLES.length; _i++) {
         const td = document.createElement('td');
-        td.style.cssText = 'text-align:center;padding:9px 8px;';
-        td.innerHTML = lockedDot(false);
+        td.style.cssText = 'text-align:center;padding:8px;';
+        td.innerHTML = lockedBadge('none');
         tr.appendChild(td);
       }
     } else {
       for (const role of EDIT_ROLES) {
         const key = `${role.key}:${pg.key}`;
         const td = document.createElement('td');
-        td.style.cssText = 'text-align:center;padding:9px 8px;';
-
-        const cb = makeCheckbox(state.get(key)!, role.color);
-        cb.addEventListener('change', async () => {
-          state.set(key, cb.checked);
-          cb.disabled = true;
-          try {
-            const r = await authFetch('/api/permissions', {
-              method: 'PUT',
-              body: JSON.stringify({ role: role.key, resource: pg.key, can_read: cb.checked }),
-            });
-            if (!r.ok) throw new Error();
-          } catch {
-            cb.checked = !cb.checked;
-            state.set(key, cb.checked);
-          } finally {
-            cb.disabled = false;
-          }
-        });
-
-        td.appendChild(cb);
+        td.style.cssText = 'text-align:center;padding:8px;';
+        td.appendChild(buildSelector(state.get(key)!, role.color, async (newLevel) => {
+          state.set(key, newLevel);
+          await authFetch('/api/permissions', {
+            method: 'PUT',
+            body: JSON.stringify({
+              role:      role.key,
+              resource:  pg.key,
+              can_read:  newLevel !== 'none' ? 1 : 0,
+              can_write: newLevel === 'full'  ? 1 : 0,
+            }),
+          });
+        }));
         tr.appendChild(td);
       }
     }
@@ -182,18 +180,72 @@ function buildPermMatrix(initial: PermRow[]): HTMLElement {
   return section;
 }
 
-function makeCheckbox(checked: boolean, accentColor: string): HTMLInputElement {
-  const cb = document.createElement('input');
-  cb.type    = 'checkbox';
-  cb.checked = checked;
-  cb.style.cssText = `width:16px;height:16px;cursor:pointer;accent-color:${accentColor};`;
-  return cb;
+function buildSelector(initial: PermLevel, accentColor: string, onChange: (level: PermLevel) => Promise<void>): HTMLElement {
+  const OPTIONS: { value: PermLevel; label: string }[] = [
+    { value: 'none', label: '—' },
+    { value: 'read', label: 'Чтение' },
+    { value: 'full', label: 'Полный' },
+  ];
+
+  let current = initial;
+  let saving  = false;
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:inline-flex;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;';
+
+  const buttons: HTMLButtonElement[] = [];
+
+  function setActive(level: PermLevel): void {
+    buttons.forEach(btn => {
+      const active = btn.dataset['val'] === level;
+      btn.style.background = active
+        ? (level === 'none' ? 'var(--bg-hover)' : accentColor + '22')
+        : 'transparent';
+      btn.style.color = active
+        ? (level === 'none' ? 'var(--text-muted)' : accentColor)
+        : 'var(--text-muted)';
+      btn.style.fontWeight = active ? '700' : '400';
+    });
+  }
+
+  OPTIONS.forEach(({ value, label }) => {
+    const btn = document.createElement('button');
+    btn.dataset['val'] = value;
+    btn.textContent    = label;
+    btn.style.cssText  = `
+      border:none;cursor:pointer;font-size:11px;font-family:inherit;padding:4px 9px;
+      transition:background 0.12s,color 0.12s;white-space:nowrap;
+    `;
+    btn.addEventListener('click', async () => {
+      if (saving || current === value) return;
+      saving = true;
+      const prev = current;
+      current = value;
+      setActive(current);
+      wrap.style.opacity = '0.6';
+      try {
+        await onChange(value);
+      } catch {
+        current = prev;
+        setActive(current);
+      } finally {
+        saving = false;
+        wrap.style.opacity = '1';
+      }
+    });
+    buttons.push(btn);
+    wrap.appendChild(btn);
+  });
+
+  setActive(current);
+  return wrap;
 }
 
-function lockedDot(full: boolean): string {
-  return full
-    ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--accent-light);color:var(--accent);font-size:11px;font-weight:700;">✓</span>`
-    : `<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--bg-hover);color:var(--text-muted);font-size:11px;">—</span>`;
+function lockedBadge(level: PermLevel): string {
+  if (level === 'full') {
+    return `<span style="font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;background:#FF690018;color:#FF6900;">Полный</span>`;
+  }
+  return `<span style="font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;background:var(--bg-hover);color:var(--text-muted);">—</span>`;
 }
 
 // ── User role management ──────────────────────────────────────────────────────

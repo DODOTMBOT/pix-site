@@ -7,10 +7,11 @@ export interface ScheduleEntry {
 }
 
 export interface UserSchedule {
-  user_id:       number;
-  user_name?:    string;
-  pizzeria_name?: string | null;
-  entries:       ScheduleEntry[];
+  user_id:               number;
+  user_name?:            string;
+  selected_pizzeria_id?: number | null;
+  pizzeria_name?:        string | null;
+  entries:               ScheduleEntry[];
 }
 
 export async function getSchedules(weekStart: string): Promise<UserSchedule[]> {
@@ -29,4 +30,11 @@ export async function saveSchedule(weekStart: string, entries: ScheduleEntry[]):
     throw new Error((e as any).error || 'Ошибка сохранения');
   }
   return r.json();
+}
+
+export async function saveScheduleLocation(weekStart: string, pizzeriaId: number | null): Promise<void> {
+  await authFetch(`/api/schedule-location?week=${weekStart}`, {
+    method: 'PUT',
+    body: JSON.stringify({ pizzeria_id: pizzeriaId }),
+  });
 }

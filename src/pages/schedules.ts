@@ -1,5 +1,6 @@
 import { isManagement } from '../services/auth';
-import { getSchedules, saveSchedule } from '../services/schedules';
+import { getAllPizzerias } from '../services/pizzeriaContext';
+import { getSchedules, saveSchedule, saveScheduleLocation } from '../services/schedules';
 import type { ScheduleEntry, UserSchedule } from '../services/schedules';
 
 const DAYS_SHORT = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
@@ -103,15 +104,22 @@ export function renderSchedules(): HTMLElement {
 // ── Manager: editable own schedule ───────────────────────────────────────────
 
 function renderManagerView(page: HTMLElement): void {
-  let monday   = getMondayOf(new Date());
-  let state    : DayState[] = Array.from({ length: 7 }, () => ({ off: true, start: '09:00', end: '18:00' }));
-  let isSaving = false;
+  let monday            = getMondayOf(new Date());
+  let state             : DayState[] = Array.from({ length: 7 }, () => ({ off: true, start: '09:00', end: '18:00' }));
+  let isSaving          = false;
+  let selectedPizzeriaId: number | null = null;
+  const myPizzerias     = getAllPizzerias();
 
   async function load(): Promise<void> {
     page.innerHTML = `<div style="color:var(--text-muted);padding:40px 0;">Загрузка...</div>`;
     try {
       const data = await getSchedules(weekKey(monday));
       state = stateFromEntries(data[0]?.entries ?? []);
+      selectedPizzeriaId = data[0]?.selected_pizzeria_id ?? null;
+      // Default to first pizzeria if nothing selected yet and only one pizzeria
+      if (selectedPizzeriaId === null && myPizzerias.length === 1) {
+        selectedPizzeriaId = myPizzerias[0].id;
+      }
       render();
     } catch {
       page.innerHTML = `<div style="color:var(--text-muted);padding:40px 0;">Ошибка загрузки</div>`;
@@ -126,10 +134,16 @@ function renderManagerView(page: HTMLElement): void {
 
     // Header row
     const hdr = document.createElement('div');
-    hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;';
+    hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;';
     hdr.innerHTML = `<h1 style="font-size:24px;font-weight:700;letter-spacing:-0.02em;">Мой график</h1>`;
     hdr.appendChild(buildWeekNav());
     wrap.appendChild(hdr);
+
+    // Pizzeria selector / label
+    wrap.appendChild(buildPizzeriaRow());
+    const spacer = document.createElement('div');
+    spacer.style.cssText = 'height:12px;';
+    wrap.appendChild(spacer);
 
     // Days card
     const card = document.createElement('div');
@@ -158,7 +172,10 @@ function renderManagerView(page: HTMLElement): void {
       saveBtn.disabled = true;
       saveBtn.textContent = 'Сохранение...';
       try {
-        await saveSchedule(weekKey(monday), stateToEntries(state));
+        await Promise.all([
+          saveSchedule(weekKey(monday), stateToEntries(state)),
+          saveScheduleLocation(weekKey(monday), selectedPizzeriaId),
+        ]);
         saveBtn.textContent = '✓ Сохранено';
         setTimeout(() => { saveBtn.textContent = 'Сохранить график'; saveBtn.disabled = false; isSaving = false; }, 1800);
       } catch {
@@ -170,6 +187,53 @@ function renderManagerView(page: HTMLElement): void {
     wrap.appendChild(footer);
 
     return wrap;
+  }
+
+  function buildPizzeriaRow(): HTMLElement {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 0;';
+
+    const lbl = document.createElement('span');
+    lbl.style.cssText = 'font-size:13px;color:var(--text-muted);flex-shrink:0;';
+    lbl.textContent = 'Пиццерия:';
+    row.appendChild(lbl);
+
+    if (myPizzerias.length === 0) {
+      const txt = document.createElement('span');
+      txt.style.cssText = 'font-size:13px;color:var(--text-muted);';
+      txt.textContent = 'не назначена';
+      row.appendChild(txt);
+    } else if (myPizzerias.length === 1) {
+      const txt = document.createElement('span');
+      txt.style.cssText = 'font-size:13px;font-weight:600;color:var(--text-primary);';
+      txt.textContent = myPizzerias[0].name;
+      row.appendChild(txt);
+    } else {
+      const sel = document.createElement('select');
+      sel.style.cssText = 'padding:5px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;background:var(--bg-input);color:var(--text-primary);';
+
+      const emptyOpt = document.createElement('option');
+      emptyOpt.value = '';
+      emptyOpt.textContent = '— выбрать пиццерию —';
+      emptyOpt.selected = selectedPizzeriaId === null;
+      sel.appendChild(emptyOpt);
+
+      myPizzerias.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value    = String(p.id);
+        opt.textContent = p.name;
+        opt.selected = p.id === selectedPizzeriaId;
+        sel.appendChild(opt);
+      });
+
+      sel.addEventListener('change', () => {
+        selectedPizzeriaId = sel.value ? parseInt(sel.value, 10) : null;
+      });
+
+      row.appendChild(sel);
+    }
+
+    return row;
   }
 
   function buildWeekNav(): HTMLElement {

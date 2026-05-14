@@ -191,10 +191,12 @@ function requirePerm(resource, write = false) {
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function getUserPizzeriaIds(userId, role) {
-  if (role === 'superadmin') {
+  if (role === 'superadmin' || role === 'management') {
     return db.prepare("SELECT id FROM pizzerias WHERE is_archived = 0").all().map(r => r.id);
   }
-  return db.prepare("SELECT pizzeria_id FROM user_pizzerias WHERE user_id = ?").all(userId).map(r => r.pizzeria_id);
+  const fromAssigns = db.prepare("SELECT pizzeria_id AS id FROM user_pizzerias WHERE user_id = ?").all(userId).map(r => r.id);
+  const fromManager = db.prepare("SELECT id FROM pizzerias WHERE manager_id = ? AND is_archived = 0").all(userId).map(r => r.id);
+  return [...new Set([...fromAssigns, ...fromManager])];
 }
 
 function fmtUser(u) {
@@ -303,9 +305,10 @@ app.get('/api/auth/me', authMiddleware, (req, res) => {
   const user = db.prepare("SELECT * FROM users WHERE id = ?").get(req.user.id);
   if (!user) return res.status(404).json({ error: 'Not found' });
 
-  const pizzerias = db.prepare(
-    "SELECT id, name, city, street, house FROM pizzerias WHERE is_archived = 0 ORDER BY name"
-  ).all();
+  const ids = getUserPizzeriaIds(req.user.id, req.user.role);
+  const pizzerias = ids.length === 0 ? [] : db.prepare(
+    `SELECT id, name, city, street, house FROM pizzerias WHERE id IN (${ids.map(() => '?').join(',')}) AND is_archived = 0 ORDER BY name`
+  ).all(...ids);
 
   res.json({ user: fmtUser(user), pizzerias });
 });
@@ -770,12 +773,14 @@ app.put('/api/permissions', authMiddleware, requireRole('superadmin'), (req, res
   if (!CONFIGURABLE_ROLES.includes(role) || !CONFIGURABLE_RESOURCES.includes(resource)) {
     return res.status(400).json({ error: 'Invalid role or resource' });
   }
-  // Binary model: access is all-or-nothing (can_write always mirrors can_read)
-  const val = can_read ? 1 : 0;
+  // Write implies read; can't have write without read
+  const read  = can_read ? 1 : 0;
+  const write = can_write ? 1 : 0;
+  const finalRead = write ? 1 : read;
   db.prepare(`
     INSERT INTO role_permissions (role, resource, can_read, can_write) VALUES (?, ?, ?, ?)
     ON CONFLICT(role, resource) DO UPDATE SET can_read=excluded.can_read, can_write=excluded.can_write
-  `).run(role, resource, val, val);
+  `).run(role, resource, finalRead, write);
   res.json({ success: true });
 });
 
@@ -794,6 +799,24 @@ app.put('/api/users/:id/role', authMiddleware, requireRole('superadmin'), (req, 
   res.json(fmtUser(db.prepare("SELECT * FROM users WHERE id = ?").get(req.params.id)));
 });
 
+// Set correct defaults for manager role (read-only vs full access per page)
+{
+  const upsert = db.prepare(`
+    INSERT INTO role_permissions (role, resource, can_read, can_write) VALUES (?, ?, ?, ?)
+    ON CONFLICT(role, resource) DO UPDATE SET can_read=excluded.can_read, can_write=excluded.can_write
+  `);
+  db.transaction(() => {
+    [
+      ['manager', 'pizzerias',   1, 0],
+      ['manager', 'contacts',    1, 0],
+      ['manager', 'rates',       1, 1],
+      ['manager', 'credentials', 1, 1],
+      ['manager', 'motivation',  1, 0],
+      ['manager', 'schedules',   1, 1],
+    ].forEach(([role, resource, r, w]) => upsert.run(role, resource, r, w));
+  })();
+}
+
 // ── Schedules ──────────────────────────────────────────────────────────────────
 db.exec(`CREATE TABLE IF NOT EXISTS schedules (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -805,6 +828,13 @@ db.exec(`CREATE TABLE IF NOT EXISTS schedules (
   UNIQUE(user_id, week_start, day)
 )`);
 
+db.exec(`CREATE TABLE IF NOT EXISTS schedule_location (
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  week_start  TEXT NOT NULL,
+  pizzeria_id INTEGER REFERENCES pizzerias(id) ON DELETE SET NULL,
+  PRIMARY KEY (user_id, week_start)
+)`);
+
 app.get('/api/schedules', authMiddleware, requirePerm('schedules'), (req, res) => {
   const week = req.query.week;
   if (!week || !/^\d{4}-\d{2}-\d{2}$/.test(week)) {
@@ -812,23 +842,39 @@ app.get('/api/schedules', authMiddleware, requirePerm('schedules'), (req, res) =
   }
   const role = req.user.role;
   if (role === 'superadmin' || role === 'management') {
-    const managers = db.prepare(`
-      SELECT u.id, u.name,
-        (SELECT p.name FROM pizzerias p WHERE p.manager_id = u.id AND p.is_archived = 0 LIMIT 1) AS pizzeria_name
-      FROM users u WHERE u.role = 'manager' ORDER BY u.name
-    `).all();
-    const getE = db.prepare(
-      "SELECT day, start_time, end_time FROM schedules WHERE user_id = ? AND week_start = ? ORDER BY day"
-    );
-    return res.json(managers.map(m => ({
-      user_id: m.id, user_name: m.name, pizzeria_name: m.pizzeria_name,
-      entries: getE.all(m.id, week),
-    })));
+    const managers = db.prepare(
+      "SELECT u.id, u.name FROM users u WHERE u.role = 'manager' ORDER BY u.name"
+    ).all();
+    const getE   = db.prepare("SELECT day, start_time, end_time FROM schedules WHERE user_id = ? AND week_start = ? ORDER BY day");
+    const getLoc = db.prepare("SELECT sl.pizzeria_id, p.name AS pizzeria_name FROM schedule_location sl LEFT JOIN pizzerias p ON p.id = sl.pizzeria_id WHERE sl.user_id = ? AND sl.week_start = ?");
+    return res.json(managers.map(m => {
+      const loc = getLoc.get(m.id, week);
+      return {
+        user_id: m.id, user_name: m.name,
+        selected_pizzeria_id:   loc?.pizzeria_id   ?? null,
+        pizzeria_name:          loc?.pizzeria_name ?? null,
+        entries: getE.all(m.id, week),
+      };
+    }));
   }
   const entries = db.prepare(
     "SELECT day, start_time, end_time FROM schedules WHERE user_id = ? AND week_start = ? ORDER BY day"
   ).all(req.user.id, week);
-  res.json([{ user_id: req.user.id, entries }]);
+  const loc = db.prepare("SELECT sl.pizzeria_id, p.name AS pizzeria_name FROM schedule_location sl LEFT JOIN pizzerias p ON p.id = sl.pizzeria_id WHERE sl.user_id = ? AND sl.week_start = ?").get(req.user.id, week);
+  res.json([{ user_id: req.user.id, selected_pizzeria_id: loc?.pizzeria_id ?? null, pizzeria_name: loc?.pizzeria_name ?? null, entries }]);
+});
+
+app.put('/api/schedule-location', authMiddleware, requirePerm('schedules', true), (req, res) => {
+  const week = req.query.week;
+  if (!week || !/^\d{4}-\d{2}-\d{2}$/.test(week)) {
+    return res.status(400).json({ error: 'week required' });
+  }
+  const { pizzeria_id } = req.body;
+  db.prepare(`
+    INSERT INTO schedule_location (user_id, week_start, pizzeria_id) VALUES (?, ?, ?)
+    ON CONFLICT(user_id, week_start) DO UPDATE SET pizzeria_id=excluded.pizzeria_id
+  `).run(req.user.id, week, pizzeria_id ?? null);
+  res.json({ success: true });
 });
 
 app.put('/api/schedules', authMiddleware, requirePerm('schedules', true), (req, res) => {
