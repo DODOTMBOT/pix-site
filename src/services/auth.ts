@@ -120,7 +120,7 @@ export async function authFetch(url: string, options: RequestInit = {}): Promise
       ...(options.headers as Record<string, string> ?? {}),
     },
   });
-  if (res.status === 401) {
+  if (res.status === 401 && window.location.pathname !== '/login') {
     logout();
     window.location.replace('/login');
   }
