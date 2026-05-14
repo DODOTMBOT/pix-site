@@ -118,31 +118,45 @@ db.exec(`CREATE TABLE IF NOT EXISTS role_permissions (
   can_write INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (role, resource)
 )`);
+// Migrate schedules_own/schedules_all → single schedules resource
+{
+  const hasOld = db.prepare("SELECT COUNT(*) AS c FROM role_permissions WHERE resource IN ('schedules_own','schedules_all')").get().c;
+  if (hasOld) {
+    const ins = db.prepare("INSERT OR IGNORE INTO role_permissions (role, resource, can_read, can_write) VALUES (?, ?, ?, ?)");
+    const ROLES = ['management','manager','shift_manager'];
+    db.transaction(() => {
+      for (const role of ROLES) {
+        const own = db.prepare("SELECT can_read FROM role_permissions WHERE role = ? AND resource = 'schedules_own'").get(role);
+        const val = own?.can_read ? 1 : 0;
+        ins.run(role, 'schedules', val, val);
+      }
+      db.prepare("DELETE FROM role_permissions WHERE resource IN ('schedules_own','schedules_all')").run();
+    })();
+  }
+}
+
 if (!db.prepare("SELECT COUNT(*) AS c FROM role_permissions").get().c) {
   const ins = db.prepare("INSERT OR IGNORE INTO role_permissions (role, resource, can_read, can_write) VALUES (?, ?, ?, ?)");
   db.transaction(() => {
     [
-      ['management',    'contacts',       1, 1],
-      ['management',    'rates',          1, 1],
-      ['management',    'credentials',    1, 1],
-      ['management',    'motivation',     1, 1],
-      ['management',    'pizzerias',      1, 1],
-      ['management',    'schedules_own',  1, 1],
-      ['management',    'schedules_all',  1, 0],
-      ['manager',       'contacts',       1, 0],
-      ['manager',       'rates',          1, 0],
-      ['manager',       'credentials',    1, 0],
-      ['manager',       'motivation',     1, 0],
-      ['manager',       'pizzerias',      0, 0],
-      ['manager',       'schedules_own',  1, 1],
-      ['manager',       'schedules_all',  0, 0],
-      ['shift_manager', 'contacts',       0, 0],
-      ['shift_manager', 'rates',          0, 0],
-      ['shift_manager', 'credentials',    0, 0],
-      ['shift_manager', 'motivation',     0, 0],
-      ['shift_manager', 'pizzerias',      0, 0],
-      ['shift_manager', 'schedules_own',  1, 1],
-      ['shift_manager', 'schedules_all',  0, 0],
+      ['management',    'contacts',    1, 1],
+      ['management',    'rates',       1, 1],
+      ['management',    'credentials', 1, 1],
+      ['management',    'motivation',  1, 1],
+      ['management',    'pizzerias',   1, 1],
+      ['management',    'schedules',   1, 1],
+      ['manager',       'contacts',    1, 1],
+      ['manager',       'rates',       1, 1],
+      ['manager',       'credentials', 1, 1],
+      ['manager',       'motivation',  1, 1],
+      ['manager',       'pizzerias',   0, 0],
+      ['manager',       'schedules',   1, 1],
+      ['shift_manager', 'contacts',    0, 0],
+      ['shift_manager', 'rates',       0, 0],
+      ['shift_manager', 'credentials', 0, 0],
+      ['shift_manager', 'motivation',  0, 0],
+      ['shift_manager', 'pizzerias',   0, 0],
+      ['shift_manager', 'schedules',   1, 1],
     ].forEach(d => ins.run(...d));
   })();
 }
@@ -737,7 +751,7 @@ app.delete('/api/pizzerias/:pizzeriaId/motivation/:id', authMiddleware, requireP
 });
 
 // ── Permissions API ────────────────────────────────────────────────────────────
-const CONFIGURABLE_RESOURCES = ['contacts','rates','credentials','motivation','pizzerias','schedules_own','schedules_all'];
+const CONFIGURABLE_RESOURCES = ['pizzerias','contacts','rates','credentials','motivation','schedules'];
 const CONFIGURABLE_ROLES     = ['management','manager','shift_manager'];
 
 app.get('/api/permissions', authMiddleware, requireRole('superadmin'), (req, res) => {
@@ -756,14 +770,12 @@ app.put('/api/permissions', authMiddleware, requireRole('superadmin'), (req, res
   if (!CONFIGURABLE_ROLES.includes(role) || !CONFIGURABLE_RESOURCES.includes(resource)) {
     return res.status(400).json({ error: 'Invalid role or resource' });
   }
-  // Write implies read; can't write without read
-  const read  = can_read  ? 1 : 0;
-  const write = can_write ? 1 : 0;
-  const finalRead = (write ? 1 : read);
+  // Binary model: access is all-or-nothing (can_write always mirrors can_read)
+  const val = can_read ? 1 : 0;
   db.prepare(`
     INSERT INTO role_permissions (role, resource, can_read, can_write) VALUES (?, ?, ?, ?)
     ON CONFLICT(role, resource) DO UPDATE SET can_read=excluded.can_read, can_write=excluded.can_write
-  `).run(role, resource, finalRead, write);
+  `).run(role, resource, val, val);
   res.json({ success: true });
 });
 
@@ -793,7 +805,7 @@ db.exec(`CREATE TABLE IF NOT EXISTS schedules (
   UNIQUE(user_id, week_start, day)
 )`);
 
-app.get('/api/schedules', authMiddleware, (req, res) => {
+app.get('/api/schedules', authMiddleware, requirePerm('schedules'), (req, res) => {
   const week = req.query.week;
   if (!week || !/^\d{4}-\d{2}-\d{2}$/.test(week)) {
     return res.status(400).json({ error: 'week required (YYYY-MM-DD)' });
@@ -819,7 +831,7 @@ app.get('/api/schedules', authMiddleware, (req, res) => {
   res.json([{ user_id: req.user.id, entries }]);
 });
 
-app.put('/api/schedules', authMiddleware, (req, res) => {
+app.put('/api/schedules', authMiddleware, requirePerm('schedules', true), (req, res) => {
   const week = req.query.week;
   if (!week || !/^\d{4}-\d{2}-\d{2}$/.test(week)) {
     return res.status(400).json({ error: 'week required' });

@@ -112,7 +112,7 @@ function buildSidebar(): HTMLElement {
     if (canRead('rates'))                                        nav.appendChild(makeItem('Ставки',    '/rates',       IC.rates));
     if (canRead('credentials'))                                  nav.appendChild(makeItem('Доступы',   '/credentials', IC.credentials));
     if (canRead('motivation'))                                   nav.appendChild(makeItem('Мотивация', '/motivation',  IC.motivation));
-    if (canRead('schedules_own') || canRead('schedules_all'))    nav.appendChild(makeItem('Графики',   '/schedule',    IC.schedule));
+    if (canRead('schedules'))                                     nav.appendChild(makeItem('Графики',   '/schedule',    IC.schedule));
     if (isSuperAdmin())                                          nav.appendChild(makeItem('Роли',      '/roles',       IC.users));
     return nav;
   }

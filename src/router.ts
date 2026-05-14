@@ -49,7 +49,7 @@ function guardRoute(path: string): string | null {
   if (p === '/rates'       && !canRead('rates'))                             return '/';
   if (p === '/credentials' && !canRead('credentials'))                       return '/';
   if (p === '/motivation'  && !canRead('motivation'))                        return '/';
-  if (p === '/schedule'    && !canRead('schedules_own'))                     return '/';
+  if (p === '/schedule'    && !canRead('schedules'))                         return '/';
   if (p === '/pizzerias'   && !canRead('pizzerias'))                         return '/';
   if ((p === '/pizzerias/new' || p.endsWith('/edit')) && !canWrite('pizzerias')) return '/';
   const pizzViewMatch = p.match(/^\/pizzerias\/(\d+)$/);

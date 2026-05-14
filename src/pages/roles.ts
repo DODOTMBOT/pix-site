@@ -3,20 +3,21 @@ import type { Role } from '../services/auth';
 
 // ── Data definitions ──────────────────────────────────────────────────────────
 
-const RESOURCES: { key: string; label: string; desc: string }[] = [
-  { key: 'contacts',      label: 'Контакты',          desc: 'Поставщики и партнёры' },
-  { key: 'rates',         label: 'Ставки',             desc: 'Оклады и тарифы' },
-  { key: 'credentials',   label: 'Доступы',            desc: 'Логины и пароли' },
-  { key: 'motivation',    label: 'Мотивация',          desc: 'Бонусы и правила' },
-  { key: 'pizzerias',     label: 'Пиццерии',           desc: 'Создание и редактирование' },
-  { key: 'schedules_own', label: 'График (свой)',       desc: 'Составление своего графика' },
-  { key: 'schedules_all', label: 'Графики (все)',       desc: 'Просмотр графиков всех управляющих' },
+const PAGES: { key: string; label: string; locked?: boolean }[] = [
+  { key: 'pizzerias',   label: 'Пиццерии' },
+  { key: 'contacts',    label: 'Контакты' },
+  { key: 'rates',       label: 'Ставки' },
+  { key: 'credentials', label: 'Доступы' },
+  { key: 'motivation',  label: 'Мотивация' },
+  { key: 'schedules',   label: 'Графики' },
+  { key: '__users__',   label: 'Пользователи', locked: true },
+  { key: '__roles__',   label: 'Роли',         locked: true },
 ];
 
 const EDIT_ROLES: { key: string; label: string; color: string }[] = [
-  { key: 'management',    label: 'Руководство',       color: '#FF6900' },
-  { key: 'manager',       label: 'Управляющий',       color: '#0ea5e9' },
-  { key: 'shift_manager', label: 'Сменный менеджер',  color: '#8b5cf6' },
+  { key: 'management',    label: 'Руководство',     color: '#FF6900' },
+  { key: 'manager',       label: 'Управляющий',     color: '#0ea5e9' },
+  { key: 'shift_manager', label: 'Смен. менеджер',  color: '#8b5cf6' },
 ];
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
@@ -52,43 +53,39 @@ function buildLayout(perms: PermRow[], users: UserRow[]): HTMLElement {
   const wrap = document.createElement('div');
 
   const hdr = document.createElement('div');
-  hdr.style.cssText = 'margin-bottom:32px;';
+  hdr.style.cssText = 'margin-bottom:28px;';
   hdr.innerHTML = `
     <h1 style="font-size:24px;font-weight:700;letter-spacing:-0.02em;margin-bottom:4px;">Роли и доступы</h1>
-    <div style="font-size:13px;color:var(--text-muted);">Настройка прав доступа и назначение ролей пользователям</div>
+    <div style="font-size:13px;color:var(--text-muted);">Настройка доступа к страницам по ролям. Нет доступа — страница скрыта из меню.</div>
   `;
   wrap.appendChild(hdr);
 
   wrap.appendChild(buildPermMatrix(perms));
 
   const spacer = document.createElement('div');
-  spacer.style.cssText = 'height:32px;';
+  spacer.style.cssText = 'height:28px;';
   wrap.appendChild(spacer);
 
   wrap.appendChild(buildUsersSection(users));
-
   return wrap;
 }
 
 // ── Permission matrix ─────────────────────────────────────────────────────────
 
 function buildPermMatrix(initial: PermRow[]): HTMLElement {
-  // Build a local mutable map: role+resource → {read, write}
-  const state = new Map<string, { read: boolean; write: boolean }>();
+  const state = new Map<string, boolean>();
   for (const r of EDIT_ROLES) {
-    for (const res of RESOURCES) {
-      const found = initial.find(p => p.role === r.key && p.resource === res.key);
-      state.set(`${r.key}:${res.key}`, {
-        read:  !!found?.can_read,
-        write: !!found?.can_write,
-      });
+    for (const pg of PAGES) {
+      if (pg.locked) continue;
+      const found = initial.find(p => p.role === r.key && p.resource === pg.key);
+      state.set(`${r.key}:${pg.key}`, !!found?.can_read);
     }
   }
 
   const section = document.createElement('div');
 
   const title = document.createElement('div');
-  title.style.cssText = 'font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;';
+  title.style.cssText = 'font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;';
   title.textContent = 'Матрица доступов';
   section.appendChild(title);
 
@@ -96,23 +93,18 @@ function buildPermMatrix(initial: PermRow[]): HTMLElement {
   card.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;box-shadow:var(--shadow-sm);';
 
   const table = document.createElement('table');
-  table.style.cssText = 'width:100%;table-layout:fixed;';
+  table.style.cssText = 'width:100%;border-collapse:collapse;';
 
   // thead
   const thead = document.createElement('thead');
-  let thHtml = `<tr><th style="width:200px;text-align:left;padding:14px 16px;">Раздел</th>`;
-  // Superadmin locked column
-  thHtml += `<th style="text-align:center;padding:14px 8px;">
-    <div style="font-size:13px;font-weight:700;color:var(--text-muted);">Суперадмин</div>
-    <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">всегда полный</div>
-  </th>`;
+  let thHtml = `<tr>
+    <th style="text-align:left;padding:10px 16px;font-size:12px;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);width:40%;">Страница</th>
+    <th style="text-align:center;padding:10px 8px;font-size:12px;border-bottom:1px solid var(--border);">
+      <div style="font-weight:700;color:#FF6900;">Суперадмин</div>
+    </th>`;
   for (const role of EDIT_ROLES) {
-    thHtml += `<th style="text-align:center;padding:14px 8px;" colspan="2">
-      <div style="font-size:13px;font-weight:700;color:${role.color};">${role.label}</div>
-      <div style="display:flex;gap:16px;justify-content:center;margin-top:6px;">
-        <span style="font-size:10px;color:var(--text-muted);font-weight:600;">ЧТЕНИЕ</span>
-        <span style="font-size:10px;color:var(--text-muted);font-weight:600;">ЗАПИСЬ</span>
-      </div>
+    thHtml += `<th style="text-align:center;padding:10px 8px;font-size:12px;border-bottom:1px solid var(--border);">
+      <div style="font-weight:700;color:${role.color};">${role.label}</div>
     </th>`;
   }
   thHtml += `</tr>`;
@@ -122,113 +114,86 @@ function buildPermMatrix(initial: PermRow[]): HTMLElement {
   // tbody
   const tbody = document.createElement('tbody');
 
-  RESOURCES.forEach((res, i) => {
+  PAGES.forEach((pg, i) => {
     const tr = document.createElement('tr');
     tr.style.cssText = i % 2 === 0 ? '' : 'background:var(--bg-secondary);';
 
-    let tdHtml = `<td style="padding:12px 16px;">
-      <div style="font-size:14px;font-weight:600;color:var(--text-primary);">${res.label}</div>
-      <div style="font-size:11px;color:var(--text-muted);">${res.desc}</div>
-    </td>`;
+    // Page label cell
+    const labelTd = document.createElement('td');
+    labelTd.style.cssText = 'padding:9px 16px;font-size:13px;font-weight:600;color:var(--text-primary);';
+    labelTd.textContent = pg.label;
+    tr.appendChild(labelTd);
 
-    // Superadmin: always locked
-    tdHtml += `<td style="text-align:center;padding:12px 8px;" colspan="2">
-      <div style="display:flex;gap:20px;justify-content:center;">
-        ${lockedCheck(true)}
-        ${lockedCheck(true)}
-      </div>
-    </td>`;
+    // Superadmin cell — always locked full access
+    const saTd = document.createElement('td');
+    saTd.style.cssText = 'text-align:center;padding:9px 8px;';
+    saTd.innerHTML = lockedDot(true);
+    tr.appendChild(saTd);
 
-    tr.innerHTML = tdHtml;
+    if (pg.locked) {
+      // Superadmin-only — show locked dot for all other roles
+      for (let _i = 0; _i < EDIT_ROLES.length; _i++) {
+        const td = document.createElement('td');
+        td.style.cssText = 'text-align:center;padding:9px 8px;';
+        td.innerHTML = lockedDot(false);
+        tr.appendChild(td);
+      }
+    } else {
+      for (const role of EDIT_ROLES) {
+        const key = `${role.key}:${pg.key}`;
+        const td = document.createElement('td');
+        td.style.cssText = 'text-align:center;padding:9px 8px;';
 
-    // Editable roles
-    for (const role of EDIT_ROLES) {
-      const key   = `${role.key}:${res.key}`;
-      const s     = state.get(key)!;
+        const cb = makeCheckbox(state.get(key)!, role.color);
+        cb.addEventListener('change', async () => {
+          state.set(key, cb.checked);
+          cb.disabled = true;
+          try {
+            const r = await authFetch('/api/permissions', {
+              method: 'PUT',
+              body: JSON.stringify({ role: role.key, resource: pg.key, can_read: cb.checked }),
+            });
+            if (!r.ok) throw new Error();
+          } catch {
+            cb.checked = !cb.checked;
+            state.set(key, cb.checked);
+          } finally {
+            cb.disabled = false;
+          }
+        });
 
-      const readTd  = document.createElement('td');
-      const writeTd = document.createElement('td');
-      readTd.style.cssText  = 'text-align:center;padding:12px 6px;';
-      writeTd.style.cssText = 'text-align:center;padding:12px 6px;';
-
-      const readCb  = makeCheckbox(s.read,  role.color);
-      const writeCb = makeCheckbox(s.write, role.color);
-
-      // Business logic: write implies read; removing read removes write
-      readCb.addEventListener('change', async () => {
-        if (!readCb.checked) writeCb.checked = false;
-        s.read  = readCb.checked;
-        s.write = writeCb.checked;
-        await savePerm(role.key, res.key, s.read, s.write, readCb, writeCb);
-      });
-
-      writeCb.addEventListener('change', async () => {
-        if (writeCb.checked) readCb.checked = true;
-        s.read  = readCb.checked;
-        s.write = writeCb.checked;
-        await savePerm(role.key, res.key, s.read, s.write, readCb, writeCb);
-      });
-
-      readTd.appendChild(readCb);
-      writeTd.appendChild(writeCb);
-      tr.appendChild(readTd);
-      tr.appendChild(writeTd);
+        td.appendChild(cb);
+        tr.appendChild(td);
+      }
     }
 
     tbody.appendChild(tr);
   });
 
-  table.appendChild(tbody);
-
-  // Legend row
-  const legendRow = document.createElement('tr');
-  legendRow.innerHTML = `<td colspan="${2 + EDIT_ROLES.length * 2}" style="padding:10px 16px;border-top:1px solid var(--border);background:var(--bg-secondary);">
-    <span style="font-size:11px;color:var(--text-muted);">
-      ✦ Изменения применяются немедленно и отражаются при следующем обращении пользователя к API.
-      Смена роли пользователя ниже вступает в силу без перелогина.
-    </span>
+  const noteRow = document.createElement('tr');
+  noteRow.innerHTML = `<td colspan="${2 + EDIT_ROLES.length}" style="padding:8px 16px;border-top:1px solid var(--border);background:var(--bg-secondary);">
+    <span style="font-size:11px;color:var(--text-muted);">Изменения вступают в силу немедленно. Пользователь без доступа не видит страницу в меню.</span>
   </td>`;
-  tbody.appendChild(legendRow);
+  tbody.appendChild(noteRow);
 
+  table.appendChild(tbody);
   card.appendChild(table);
   section.appendChild(card);
   return section;
-}
-
-async function savePerm(
-  role: string, resource: string, read: boolean, write: boolean,
-  readCb: HTMLInputElement, writeCb: HTMLInputElement,
-): Promise<void> {
-  readCb.disabled  = true;
-  writeCb.disabled = true;
-  try {
-    const r = await authFetch('/api/permissions', {
-      method: 'PUT',
-      body: JSON.stringify({ role, resource, can_read: read, can_write: write }),
-    });
-    if (!r.ok) throw new Error();
-  } catch {
-    // revert on error
-    readCb.checked  = !read;
-    writeCb.checked = !write;
-  } finally {
-    readCb.disabled  = false;
-    writeCb.disabled = false;
-  }
 }
 
 function makeCheckbox(checked: boolean, accentColor: string): HTMLInputElement {
   const cb = document.createElement('input');
   cb.type    = 'checkbox';
   cb.checked = checked;
-  cb.style.cssText = `width:18px;height:18px;cursor:pointer;accent-color:${accentColor};`;
+  cb.style.cssText = `width:16px;height:16px;cursor:pointer;accent-color:${accentColor};`;
   return cb;
 }
 
-function lockedCheck(checked: boolean): string {
-  return `<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;background:${checked ? 'var(--accent-light)' : 'var(--bg-hover)'};color:${checked ? 'var(--accent)' : 'var(--text-muted)'};font-size:13px;">
-    ${checked ? '✓' : '—'}
-  </span>`;
+function lockedDot(full: boolean): string {
+  return full
+    ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--accent-light);color:var(--accent);font-size:11px;font-weight:700;">✓</span>`
+    : `<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--bg-hover);color:var(--text-muted);font-size:11px;">—</span>`;
 }
 
 // ── User role management ──────────────────────────────────────────────────────
@@ -237,7 +202,7 @@ function buildUsersSection(users: UserRow[]): HTMLElement {
   const section = document.createElement('div');
 
   const title = document.createElement('div');
-  title.style.cssText = 'font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;';
+  title.style.cssText = 'font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;';
   title.textContent = 'Пользователи';
   section.appendChild(title);
 
@@ -245,32 +210,34 @@ function buildUsersSection(users: UserRow[]): HTMLElement {
   card.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;box-shadow:var(--shadow-sm);';
 
   const table = document.createElement('table');
-  table.innerHTML = `<thead><tr>
-    <th>Имя</th>
-    <th>Email</th>
-    <th>Должность</th>
-    <th style="width:200px;">Роль</th>
-    <th style="width:120px;"></th>
+  table.style.cssText = 'width:100%;border-collapse:collapse;';
+  table.innerHTML = `<thead><tr style="border-bottom:1px solid var(--border);">
+    <th style="text-align:left;padding:10px 16px;font-size:12px;font-weight:600;color:var(--text-muted);">Имя</th>
+    <th style="text-align:left;padding:10px 16px;font-size:12px;font-weight:600;color:var(--text-muted);">Email</th>
+    <th style="text-align:left;padding:10px 16px;font-size:12px;font-weight:600;color:var(--text-muted);">Должность</th>
+    <th style="text-align:left;padding:10px 16px;font-size:12px;font-weight:600;color:var(--text-muted);width:180px;">Роль</th>
+    <th style="width:100px;padding:10px 16px;"></th>
   </tr></thead>`;
 
   const tbody = document.createElement('tbody');
 
-  users.forEach(u => {
-    const tr = document.createElement('tr');
-
-    const roleBadge = (role: Role) => {
-      const colors: Record<string, string> = {
-        superadmin:    '#FF6900',
-        management:    '#FF6900',
-        manager:       '#0ea5e9',
-        shift_manager: '#8b5cf6',
-      };
-      const c = colors[role] ?? '#888';
-      return `<span style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;background:${c}18;color:${c};">${roleLabel(role)}</span>`;
+  const roleBadge = (role: Role) => {
+    const colors: Record<string, string> = {
+      superadmin:    '#FF6900',
+      management:    '#FF6900',
+      manager:       '#0ea5e9',
+      shift_manager: '#8b5cf6',
     };
+    const c = colors[role] ?? '#888';
+    return `<span style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;background:${c}18;color:${c};">${roleLabel(role)}</span>`;
+  };
+
+  users.forEach((u, i) => {
+    const tr = document.createElement('tr');
+    tr.style.cssText = i % 2 !== 0 ? 'background:var(--bg-secondary);' : '';
 
     const sel = document.createElement('select');
-    sel.style.cssText = 'width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;background:var(--bg-input);color:var(--text-primary);';
+    sel.style.cssText = 'padding:5px 8px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;background:var(--bg-input);color:var(--text-primary);width:100%;';
     ROLE_OPTIONS.forEach(opt => {
       const o = document.createElement('option');
       o.value       = opt.value;
@@ -281,16 +248,16 @@ function buildUsersSection(users: UserRow[]): HTMLElement {
 
     const saveBtn = document.createElement('button');
     saveBtn.className = 'btn btn-outline';
-    saveBtn.style.cssText = 'padding:5px 14px;font-size:12px;';
+    saveBtn.style.cssText = 'padding:4px 12px;font-size:12px;white-space:nowrap;';
     saveBtn.textContent = 'Сохранить';
 
     const statusEl = document.createElement('span');
-    statusEl.style.cssText = 'font-size:12px;color:var(--text-muted);margin-left:8px;';
+    statusEl.style.cssText = 'font-size:12px;color:var(--text-muted);margin-left:6px;';
 
-    const badgeCell = document.createElement('td');
-    badgeCell.innerHTML = roleBadge(u.role);
+    const badgeTd = document.createElement('td');
+    badgeTd.style.cssText = 'padding:9px 16px;';
+    badgeTd.innerHTML = roleBadge(u.role);
 
-    // Track original role to show badge correctly
     let currentRole = u.role;
 
     sel.addEventListener('change', () => {
@@ -300,11 +267,9 @@ function buildUsersSection(users: UserRow[]): HTMLElement {
     saveBtn.addEventListener('click', async () => {
       const newRole = sel.value as Role;
       if (newRole === currentRole) return;
-
-      saveBtn.disabled  = true;
+      saveBtn.disabled = true;
       saveBtn.textContent = '...';
       statusEl.textContent = '';
-
       try {
         const r = await authFetch(`/api/users/${u.id}/role`, {
           method: 'PUT',
@@ -315,38 +280,37 @@ function buildUsersSection(users: UserRow[]): HTMLElement {
           throw new Error((e as any).error || 'Ошибка');
         }
         currentRole = newRole;
-        badgeCell.innerHTML = roleBadge(newRole);
+        badgeTd.innerHTML = roleBadge(newRole);
         statusEl.textContent = '✓';
         statusEl.style.color = 'var(--accent)';
-        saveBtn.textContent = 'Сохранить';
         saveBtn.style.fontWeight = '';
         setTimeout(() => { statusEl.textContent = ''; }, 2000);
       } catch (err) {
         statusEl.textContent = (err as Error).message;
         statusEl.style.color = '#ef4444';
-        saveBtn.textContent = 'Сохранить';
-        // revert select
         sel.value = currentRole;
       } finally {
         saveBtn.disabled = false;
+        saveBtn.textContent = 'Сохранить';
       }
     });
 
-    const roleTd   = document.createElement('td');
-    roleTd.appendChild(sel);
+    const selTd = document.createElement('td');
+    selTd.style.cssText = 'padding:6px 16px;';
+    selTd.appendChild(sel);
 
     const actionTd = document.createElement('td');
-    actionTd.style.cssText = 'white-space:nowrap;';
+    actionTd.style.cssText = 'padding:6px 16px;white-space:nowrap;';
     actionTd.appendChild(saveBtn);
     actionTd.appendChild(statusEl);
 
     tr.innerHTML = `
-      <td style="font-weight:600;">${esc(u.name)}</td>
-      <td style="color:var(--text-secondary);font-size:13px;">${esc(u.email)}</td>
-      <td style="color:var(--text-muted);font-size:13px;">${u.job_title ? esc(u.job_title) : '—'}</td>
+      <td style="padding:9px 16px;font-size:13px;font-weight:600;">${esc(u.name)}</td>
+      <td style="padding:9px 16px;font-size:12px;color:var(--text-secondary);">${esc(u.email)}</td>
+      <td style="padding:9px 16px;font-size:12px;color:var(--text-muted);">${u.job_title ? esc(u.job_title) : '—'}</td>
     `;
-    tr.appendChild(badgeCell);
-    tr.appendChild(roleTd);
+    tr.appendChild(badgeTd);
+    tr.appendChild(selTd);
     tr.appendChild(actionTd);
     tbody.appendChild(tr);
   });
