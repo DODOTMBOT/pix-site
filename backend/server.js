@@ -510,32 +510,60 @@ function requirePizzeriaAccess(req, res, next) {
 }
 
 // ── Contacts ───────────────────────────────────────────────────────────────────
+// Schema migration: add position column and junction table
+try { db.exec("ALTER TABLE contacts ADD COLUMN position TEXT"); } catch {}
+db.exec(`CREATE TABLE IF NOT EXISTS contact_pizzerias (
+  contact_id  INTEGER NOT NULL,
+  pizzeria_id INTEGER NOT NULL,
+  PRIMARY KEY (contact_id, pizzeria_id)
+)`);
+// One-time migration: move existing pizzeria_id into junction table
+(function migrateContactPizzerias() {
+  const rows = db.prepare("SELECT id, pizzeria_id FROM contacts WHERE pizzeria_id > 0").all();
+  const ins  = db.prepare("INSERT OR IGNORE INTO contact_pizzerias (contact_id, pizzeria_id) VALUES (?, ?)");
+  for (const row of rows) ins.run(row.id, row.pizzeria_id);
+})();
 
-app.get('/api/pizzerias/:pizzeriaId/contacts', authMiddleware, requirePizzeriaAccess, (req, res) => {
-  res.json(db.prepare("SELECT * FROM contacts WHERE pizzeria_id = ? ORDER BY category, name").all(req.pizzeriaId));
+const getContactPizzerias = db.prepare(
+  "SELECT p.id, p.name FROM pizzerias p JOIN contact_pizzerias cp ON cp.pizzeria_id = p.id WHERE cp.contact_id = ? ORDER BY p.name"
+);
+
+app.get('/api/contacts', authMiddleware, (req, res) => {
+  const contacts = db.prepare("SELECT id, position, name, phone, email FROM contacts ORDER BY name").all();
+  res.json(contacts.map(c => ({ ...c, pizzerias: getContactPizzerias.all(c.id) })));
 });
 
-app.post('/api/pizzerias/:pizzeriaId/contacts', authMiddleware, requirePizzeriaAccess, (req, res) => {
-  const { category, name, phone, email, notes } = req.body;
-  if (!category || !name) return res.status(400).json({ error: 'category и name обязательны' });
+app.post('/api/contacts', authMiddleware, (req, res) => {
+  const { position, name, phone, email, pizzeria_ids } = req.body;
+  if (!name) return res.status(400).json({ error: 'name обязателен' });
   const r = db.prepare(
-    "INSERT INTO contacts (pizzeria_id, category, name, phone, email, notes) VALUES (?, ?, ?, ?, ?, ?)"
-  ).run(req.pizzeriaId, category, name, phone || null, email || null, notes || null);
-  res.status(201).json(db.prepare("SELECT * FROM contacts WHERE id = ?").get(r.lastInsertRowid));
+    "INSERT INTO contacts (pizzeria_id, position, name, phone, email) VALUES (0, ?, ?, ?, ?)"
+  ).run(position || null, name, phone || null, email || null);
+  const id = r.lastInsertRowid;
+  if (Array.isArray(pizzeria_ids)) {
+    const ins = db.prepare("INSERT OR IGNORE INTO contact_pizzerias (contact_id, pizzeria_id) VALUES (?, ?)");
+    for (const pid of pizzeria_ids) ins.run(id, pid);
+  }
+  const contact = db.prepare("SELECT id, position, name, phone, email FROM contacts WHERE id = ?").get(id);
+  res.status(201).json({ ...contact, pizzerias: getContactPizzerias.all(id) });
 });
 
-app.put('/api/pizzerias/:pizzeriaId/contacts/:id', authMiddleware, requirePizzeriaAccess, (req, res) => {
-  const row = db.prepare("SELECT id FROM contacts WHERE id = ? AND pizzeria_id = ?").get(req.params.id, req.pizzeriaId);
+app.put('/api/contacts/:id', authMiddleware, (req, res) => {
+  const row = db.prepare("SELECT id FROM contacts WHERE id = ?").get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Not found' });
-  const { category, name, phone, email, notes } = req.body;
-  db.prepare("UPDATE contacts SET category=?, name=?, phone=?, email=?, notes=? WHERE id=?")
-    .run(category, name, phone || null, email || null, notes || null, req.params.id);
-  res.json(db.prepare("SELECT * FROM contacts WHERE id = ?").get(req.params.id));
+  const { position, name, phone, email, pizzeria_ids } = req.body;
+  db.prepare("UPDATE contacts SET position=?, name=?, phone=?, email=? WHERE id=?")
+    .run(position || null, name, phone || null, email || null, req.params.id);
+  if (Array.isArray(pizzeria_ids)) {
+    db.prepare("DELETE FROM contact_pizzerias WHERE contact_id = ?").run(req.params.id);
+    const ins = db.prepare("INSERT OR IGNORE INTO contact_pizzerias (contact_id, pizzeria_id) VALUES (?, ?)");
+    for (const pid of pizzeria_ids) ins.run(req.params.id, pid);
+  }
+  const contact = db.prepare("SELECT id, position, name, phone, email FROM contacts WHERE id = ?").get(req.params.id);
+  res.json({ ...contact, pizzerias: getContactPizzerias.all(req.params.id) });
 });
 
-app.delete('/api/pizzerias/:pizzeriaId/contacts/:id', authMiddleware, requirePizzeriaAccess, (req, res) => {
-  const row = db.prepare("SELECT id FROM contacts WHERE id = ? AND pizzeria_id = ?").get(req.params.id, req.pizzeriaId);
-  if (!row) return res.status(404).json({ error: 'Not found' });
+app.delete('/api/contacts/:id', authMiddleware, (req, res) => {
   db.prepare("DELETE FROM contacts WHERE id = ?").run(req.params.id);
   res.json({ success: true });
 });
