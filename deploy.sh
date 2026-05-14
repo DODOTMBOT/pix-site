@@ -31,9 +31,9 @@ echo "  → Stopping old backend..."
 pkill -f "node /var/www/imp/backend/server.js" || true
 sleep 2
 
-# Удали старый код бэкенда (но НЕ /var/www/imp/data !)
-echo "  → Removing old backend code..."
-rm -rf /var/www/imp/backend
+# Удали старый код бэкенда, но сохрани node_modules (ускоряет npm install)
+echo "  → Removing old backend code (keeping node_modules)..."
+find /var/www/imp/backend -mindepth 1 -maxdepth 1 ! -name 'node_modules' -exec rm -rf {} +
 mkdir -p /var/www/imp/backend
 
 # Скачай свежий код с GitHub

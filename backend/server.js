@@ -510,16 +510,42 @@ function requirePizzeriaAccess(req, res, next) {
 }
 
 // ── Contacts ───────────────────────────────────────────────────────────────────
-// Schema migration: add position column and junction table
-try { db.exec("ALTER TABLE contacts ADD COLUMN position TEXT"); } catch {}
-db.exec(`CREATE TABLE IF NOT EXISTS contact_pizzerias (
-  contact_id  INTEGER NOT NULL,
-  pizzeria_id INTEGER NOT NULL,
-  PRIMARY KEY (contact_id, pizzeria_id)
-)`);
-// One-time migration: move existing pizzeria_id into junction table
-(function migrateContactPizzerias() {
-  const rows = db.prepare("SELECT id, pizzeria_id FROM contacts WHERE pizzeria_id > 0").all();
+// Schema migration: make pizzeria_id nullable, add position, create junction table
+(function migrateContacts() {
+  const cols = db.pragma("table_info(contacts)").reduce((m, c) => { m[c.name] = c; return m; }, {});
+
+  // Recreate table if pizzeria_id is still NOT NULL (old schema)
+  if (cols.pizzeria_id && cols.pizzeria_id.notnull) {
+    const posCol = cols.position ? 'position,' : '';
+    db.exec(`
+      CREATE TABLE contacts_tmp (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        pizzeria_id INTEGER,
+        category    TEXT,
+        position    TEXT,
+        name        TEXT NOT NULL,
+        phone       TEXT,
+        email       TEXT,
+        notes       TEXT,
+        created_at  TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+      INSERT INTO contacts_tmp (id, pizzeria_id, category, ${posCol} name, phone, email, notes, created_at)
+        SELECT id, pizzeria_id, category, ${posCol} name, phone, email, notes, created_at FROM contacts;
+      DROP TABLE contacts;
+      ALTER TABLE contacts_tmp RENAME TO contacts;
+    `);
+  } else if (!cols.position) {
+    try { db.exec("ALTER TABLE contacts ADD COLUMN position TEXT"); } catch {}
+  }
+
+  db.exec(`CREATE TABLE IF NOT EXISTS contact_pizzerias (
+    contact_id  INTEGER NOT NULL,
+    pizzeria_id INTEGER NOT NULL,
+    PRIMARY KEY (contact_id, pizzeria_id)
+  )`);
+
+  // One-time migration: move existing pizzeria_id into junction table
+  const rows = db.prepare("SELECT id, pizzeria_id FROM contacts WHERE pizzeria_id IS NOT NULL AND pizzeria_id > 0").all();
   const ins  = db.prepare("INSERT OR IGNORE INTO contact_pizzerias (contact_id, pizzeria_id) VALUES (?, ?)");
   for (const row of rows) ins.run(row.id, row.pizzeria_id);
 })();
@@ -537,7 +563,7 @@ app.post('/api/contacts', authMiddleware, (req, res) => {
   const { position, name, phone, email, pizzeria_ids } = req.body;
   if (!name) return res.status(400).json({ error: 'name обязателен' });
   const r = db.prepare(
-    "INSERT INTO contacts (pizzeria_id, position, name, phone, email) VALUES (0, ?, ?, ?, ?)"
+    "INSERT INTO contacts (position, name, phone, email) VALUES (?, ?, ?, ?)"
   ).run(position || null, name, phone || null, email || null);
   const id = r.lastInsertRowid;
   if (Array.isArray(pizzeria_ids)) {
