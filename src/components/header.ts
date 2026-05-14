@@ -11,6 +11,7 @@ const IC = {
   rates:       `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M1 2v12h14V2H1zm1 1h12v10H2V3zm2 2v1h8V5H4zm0 3v1h5V8H4zm0 3v1h3v-1H4z"/></svg>`,
   credentials: `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M8 1a4 4 0 0 0-4 4 4 4 0 0 0 .3 1.5L1 9.8V14h3v-1h1v-1h2v-1.2A4 4 0 0 0 8 11a4 4 0 0 0 4-4 4 4 0 0 0-4-4zm0 1a3 3 0 0 1 3 3 3 3 0 0 1-3 3 3 3 0 0 1-1-.2L3.5 10.4V13H2v-2.8l3.4-3.4A3 3 0 0 1 5 5a3 3 0 0 1 3-3zm1.5 1.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/></svg>`,
   motivation:  `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M8 1l2 5h5l-4 3 1.5 5L8 11 3.5 14 5 9 1 6h5L8 1z"/></svg>`,
+  schedule:    `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M4 1v1H2a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1h-2V1h-1v1H5V1H4zm0 2h1v1h1V3h4v1h1V3h2v2H2V3h2zm-2 3h10v7H2V6zm2 1v1h1V7H4zm3 0v1h1V7H7zm3 0v1h1V7h-1zM4 10v1h1v-1H4zm3 0v1h1v-1H7z"/></svg>`,
   logout:      `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M10 3.5 8.5 5l2.5 2.5H5v1h6L8.5 11 10 12.5 14 8l-4-4.5zM2 2h5V1H2a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h5v-1H2V2z"/></svg>`,
   moon:        `<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M6 .278a.768.768 0 0 1 .08.858A7.208 7.208 0 0 0 5.202 4.6c0 4.02 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"/></svg>`,
 };
@@ -112,6 +113,7 @@ function buildSidebar(): HTMLElement {
     nav.appendChild(makeItem('Ставки',     '/rates',        IC.rates));
     nav.appendChild(makeItem('Доступы',    '/credentials',  IC.credentials));
     nav.appendChild(makeItem('Мотивация',  '/motivation',   IC.motivation));
+    nav.appendChild(makeItem('Графики',    '/schedule',     IC.schedule));
     return nav;
   }
 
@@ -229,6 +231,29 @@ function buildHorizontalHeader(): HTMLElement {
       const center = header.querySelector('#h-center')!;
       center.appendChild(buildPizzeriaSwitcher('inline'));
     }
+
+    // Nav links for manager/shift_manager
+    const nav = document.createElement('nav');
+    nav.style.cssText = 'display:flex;gap:2px;padding:0 16px 8px;border-top:1px solid var(--border);margin-top:4px;';
+    const makeNavLink = (label: string, path: string): HTMLElement => {
+      const a = document.createElement('a');
+      a.href = path;
+      const curPath = window.location.pathname;
+      const active  = curPath === path;
+      a.style.cssText = `
+        padding:5px 12px;font-size:13px;font-weight:${active ? '600' : '500'};
+        color:${active ? 'var(--accent)' : 'var(--text-secondary)'};
+        background:${active ? 'var(--accent-light)' : 'transparent'};
+        text-decoration:none;border-radius:var(--radius-sm);transition:background 0.1s,color 0.1s;
+      `;
+      a.textContent = label;
+      a.addEventListener('click', e => { e.preventDefault(); navigate(path); });
+      a.addEventListener('mouseenter', () => { if (!active) a.style.background = 'var(--bg-hover)'; });
+      a.addEventListener('mouseleave', () => { if (!active) a.style.background = 'transparent'; });
+      return a;
+    };
+    nav.appendChild(makeNavLink('Мой график', '/schedule'));
+    header.appendChild(nav);
 
     updateToggleButton();
   }

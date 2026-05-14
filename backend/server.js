@@ -693,6 +693,68 @@ app.delete('/api/pizzerias/:pizzeriaId/motivation/:id', authMiddleware, requireP
   res.json({ success: true });
 });
 
+// ── Schedules ──────────────────────────────────────────────────────────────────
+db.exec(`CREATE TABLE IF NOT EXISTS schedules (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  week_start TEXT NOT NULL,
+  day        INTEGER NOT NULL,
+  start_time TEXT,
+  end_time   TEXT,
+  UNIQUE(user_id, week_start, day)
+)`);
+
+app.get('/api/schedules', authMiddleware, (req, res) => {
+  const week = req.query.week;
+  if (!week || !/^\d{4}-\d{2}-\d{2}$/.test(week)) {
+    return res.status(400).json({ error: 'week required (YYYY-MM-DD)' });
+  }
+  const role = req.user.role;
+  if (role === 'superadmin' || role === 'management') {
+    const managers = db.prepare(`
+      SELECT u.id, u.name,
+        (SELECT p.name FROM pizzerias p WHERE p.manager_id = u.id AND p.is_archived = 0 LIMIT 1) AS pizzeria_name
+      FROM users u WHERE u.role = 'manager' ORDER BY u.name
+    `).all();
+    const getE = db.prepare(
+      "SELECT day, start_time, end_time FROM schedules WHERE user_id = ? AND week_start = ? ORDER BY day"
+    );
+    return res.json(managers.map(m => ({
+      user_id: m.id, user_name: m.name, pizzeria_name: m.pizzeria_name,
+      entries: getE.all(m.id, week),
+    })));
+  }
+  const entries = db.prepare(
+    "SELECT day, start_time, end_time FROM schedules WHERE user_id = ? AND week_start = ? ORDER BY day"
+  ).all(req.user.id, week);
+  res.json([{ user_id: req.user.id, entries }]);
+});
+
+app.put('/api/schedules', authMiddleware, (req, res) => {
+  const week = req.query.week;
+  if (!week || !/^\d{4}-\d{2}-\d{2}$/.test(week)) {
+    return res.status(400).json({ error: 'week required' });
+  }
+  const { entries } = req.body;
+  if (!Array.isArray(entries)) return res.status(400).json({ error: 'entries required' });
+  const upsert = db.prepare(`
+    INSERT INTO schedules (user_id, week_start, day, start_time, end_time)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(user_id, week_start, day) DO UPDATE SET start_time=excluded.start_time, end_time=excluded.end_time
+  `);
+  db.transaction(() => {
+    for (const e of entries) {
+      if (typeof e.day === 'number' && e.day >= 0 && e.day <= 6) {
+        upsert.run(req.user.id, week, e.day, e.start_time || null, e.end_time || null);
+      }
+    }
+  })();
+  const saved = db.prepare(
+    "SELECT day, start_time, end_time FROM schedules WHERE user_id = ? AND week_start = ? ORDER BY day"
+  ).all(req.user.id, week);
+  res.json(saved);
+});
+
 // ── Start ──────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`[server] PiX backend running on port ${PORT}`);

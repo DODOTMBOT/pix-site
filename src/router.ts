@@ -9,6 +9,7 @@ import { renderContacts }      from './pages/contacts';
 import { renderRates }         from './pages/rates';
 import { renderCredentials }   from './pages/credentials';
 import { renderMotivation }    from './pages/motivation';
+import { renderSchedules }     from './pages/schedules';
 import { isAuthenticated, isManagement, isSuperAdmin } from './services/auth';
 
 const PUBLIC_PATHS = new Set(['/login']);
@@ -62,6 +63,7 @@ function matchRoute(path: string): () => HTMLElement {
   if (p === '/rates')      return renderRates;
   if (p === '/credentials') return renderCredentials;
   if (p === '/motivation') return renderMotivation;
+  if (p === '/schedule')   return renderSchedules;
 
   return renderStub;
 }
