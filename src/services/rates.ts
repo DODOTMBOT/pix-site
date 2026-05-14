@@ -1,17 +1,43 @@
 import { authFetch } from './auth';
 import { getActivePizzeriaId } from './pizzeriaContext';
 
+export type RateCategory = 'кухня' | 'кассир' | 'курьер';
+
 export interface Rate {
   id:             number;
   pizzeria_id:    number;
+  category:       RateCategory;
   position:       string;
   hourly_rate:    number | null;
   monthly_salary: number | null;
+  rate_per_order: number | null;
+  rate_per_km:    number | null;
   notes:          string | null;
   created_at:     string;
 }
 
-export const RATE_POSITIONS = ['Пиццамейкер', 'Курьер', 'Кассир', 'Менеджер смены', 'Стажёр', 'Универсал', 'Наставник'] as const;
+export const RATE_CATEGORIES: Record<RateCategory, string[]> = {
+  кухня: [
+    'Стажер-пиццамейкер',
+    'Клинер',
+    'Пиццамейкер',
+    'Универсал',
+    'Наставник',
+    'Стажер менеджер',
+    'Менеджер',
+    'Заместитель управляющего',
+  ],
+  кассир: [
+    'Стажер-кассир',
+    'Кассир',
+  ],
+  курьер: [
+    'Пеший',
+    'Электро/Вело, ТС компании',
+    'Электро/Вело, личное ТС',
+    'Авто, личное ТС',
+  ],
+};
 
 function base(): string {
   const id = getActivePizzeriaId();

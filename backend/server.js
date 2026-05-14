@@ -541,26 +541,30 @@ app.delete('/api/pizzerias/:pizzeriaId/contacts/:id', authMiddleware, requirePiz
 });
 
 // ── Rates ──────────────────────────────────────────────────────────────────────
+// Migrate existing DB: add columns added after initial schema
+try { db.exec("ALTER TABLE rates ADD COLUMN category TEXT NOT NULL DEFAULT 'кухня'"); } catch {}
+try { db.exec("ALTER TABLE rates ADD COLUMN rate_per_order INTEGER");                 } catch {}
+try { db.exec("ALTER TABLE rates ADD COLUMN rate_per_km INTEGER");                   } catch {}
 
 app.get('/api/pizzerias/:pizzeriaId/rates', authMiddleware, requirePizzeriaAccess, (req, res) => {
-  res.json(db.prepare("SELECT * FROM rates WHERE pizzeria_id = ? ORDER BY position").all(req.pizzeriaId));
+  res.json(db.prepare("SELECT * FROM rates WHERE pizzeria_id = ? ORDER BY category, position").all(req.pizzeriaId));
 });
 
 app.post('/api/pizzerias/:pizzeriaId/rates', authMiddleware, requirePizzeriaAccess, (req, res) => {
-  const { position, hourly_rate, monthly_salary, notes } = req.body;
+  const { category, position, hourly_rate, monthly_salary, rate_per_order, rate_per_km, notes } = req.body;
   if (!position) return res.status(400).json({ error: 'position обязателен' });
   const r = db.prepare(
-    "INSERT INTO rates (pizzeria_id, position, hourly_rate, monthly_salary, notes) VALUES (?, ?, ?, ?, ?)"
-  ).run(req.pizzeriaId, position, hourly_rate ?? null, monthly_salary ?? null, notes || null);
+    "INSERT INTO rates (pizzeria_id, category, position, hourly_rate, monthly_salary, rate_per_order, rate_per_km, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+  ).run(req.pizzeriaId, category || 'кухня', position, hourly_rate ?? null, monthly_salary ?? null, rate_per_order ?? null, rate_per_km ?? null, notes || null);
   res.status(201).json(db.prepare("SELECT * FROM rates WHERE id = ?").get(r.lastInsertRowid));
 });
 
 app.put('/api/pizzerias/:pizzeriaId/rates/:id', authMiddleware, requirePizzeriaAccess, (req, res) => {
   const row = db.prepare("SELECT id FROM rates WHERE id = ? AND pizzeria_id = ?").get(req.params.id, req.pizzeriaId);
   if (!row) return res.status(404).json({ error: 'Not found' });
-  const { position, hourly_rate, monthly_salary, notes } = req.body;
-  db.prepare("UPDATE rates SET position=?, hourly_rate=?, monthly_salary=?, notes=? WHERE id=?")
-    .run(position, hourly_rate ?? null, monthly_salary ?? null, notes || null, req.params.id);
+  const { category, position, hourly_rate, monthly_salary, rate_per_order, rate_per_km, notes } = req.body;
+  db.prepare("UPDATE rates SET category=?, position=?, hourly_rate=?, monthly_salary=?, rate_per_order=?, rate_per_km=?, notes=? WHERE id=?")
+    .run(category || 'кухня', position, hourly_rate ?? null, monthly_salary ?? null, rate_per_order ?? null, rate_per_km ?? null, notes || null, req.params.id);
   res.json(db.prepare("SELECT * FROM rates WHERE id = ?").get(req.params.id));
 });
 
