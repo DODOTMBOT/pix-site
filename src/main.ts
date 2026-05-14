@@ -1,8 +1,7 @@
 import './styles/global.css';
 import './styles/components.css';
-import { initTheme }    from './services/theme';
-import { getUser, logout } from './services/auth';
-import { loadContext }  from './services/pizzeriaContext';
+import { initTheme }   from './services/theme';
+import { loadContext } from './services/pizzeriaContext';
 import { renderHeader } from './components/header';
 import { renderFooter } from './components/footer';
 import { initRouter }   from './router';
@@ -25,16 +24,11 @@ layout.appendChild(renderFooter());
 app.appendChild(layout);
 
 (async () => {
-  if (getUser()) {
-    try {
-      await loadContext();
-    } catch {
-      // Any failure to restore session (expired token, network error) → log out and go to login.
-      // authFetch already handles 401 by redirecting, but if loadContext() fails for other
-      // reasons (parse error, server down) we still clear auth so the user isn't stuck on
-      // empty pages.
-      logout();
-    }
+  try {
+    await loadContext();
+  } catch {
+    // authFetch handles 401 (expired/missing session) by redirecting to /login.
+    // Other failures (server down, parse error) are surfaced per-page.
   }
   initRouter(main);
 })();
