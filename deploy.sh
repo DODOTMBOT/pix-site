@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "=== PiX Stage 1 Deployment ==="
+echo "=== PiX Deployment ==="
 
 # 1. Собери фронт локально
 echo "[1/6] Building frontend..."
@@ -13,34 +13,43 @@ echo "[2/6] Deploying to server..."
 ssh -p 2222 root@72.56.249.243 << 'ENDSSH'
 set -e
 
+# Убедись что папка data существует и НИКОГДА не удаляется
+# Здесь живут dodo.db, sessions.db и .env с секретами
+mkdir -p /var/www/imp/data
+
+# Сохрани SESSION_SECRET до того как удалим backend
+# Если он уже есть в .env — берём его, иначе генерируем один раз
+if [ -f /var/www/imp/backend/.env ] && grep -q SESSION_SECRET /var/www/imp/backend/.env; then
+  SESSION_SECRET=$(grep '^SESSION_SECRET=' /var/www/imp/backend/.env | cut -d= -f2-)
+else
+  SESSION_SECRET=$(openssl rand -hex 32)
+  echo "  → Generated new SESSION_SECRET"
+fi
+
 # Останови старый процесс
 echo "  → Stopping old backend..."
 pkill -f "node /var/www/imp/backend/server.js" || true
 sleep 2
 
-# Удали старый бэкенд
-echo "  → Removing old backend..."
+# Удали старый код бэкенда (но НЕ /var/www/imp/data !)
+echo "  → Removing old backend code..."
 rm -rf /var/www/imp/backend
 mkdir -p /var/www/imp/backend
 
 # Скачай свежий код с GitHub
 echo "  → Pulling fresh code..."
-cd /var/www/imp
-rm -rf temp-deploy
-git clone --depth 1 https://github.com/DODOTMBOT/pix-site.git temp-deploy
-cd temp-deploy
+rm -rf /var/www/imp/temp-deploy
+git clone --depth 1 https://github.com/DODOTMBOT/pix-site.git /var/www/imp/temp-deploy
 
-# Перенеси бэкенд
+# Перенеси только код бэкенда
 echo "  → Installing backend..."
-cp -r backend/* /var/www/imp/backend/
+cp -r /var/www/imp/temp-deploy/backend/* /var/www/imp/backend/
 cd /var/www/imp/backend
 
-# Создай .env с безопасным JWT
-echo "  → Creating .env..."
-JWT_SECRET=$(openssl rand -hex 32)
+# Запиши .env с сохранённым секретом
 cat > .env << EOF
 PORT=3000
-JWT_SECRET=$JWT_SECRET
+SESSION_SECRET=$SESSION_SECRET
 NODE_ENV=production
 EOF
 
@@ -48,20 +57,18 @@ EOF
 echo "  → Installing dependencies..."
 npm install --production
 
-# Установи PM2 глобально
-echo "  → Installing PM2..."
-npm install -g pm2
+# Установи PM2 глобально если нет
+npm install -g pm2 2>/dev/null || true
 
 # Запусти через PM2
 echo "  → Starting backend with PM2..."
 pm2 delete pix-backend 2>/dev/null || true
 pm2 start server.js --name pix-backend
 pm2 save
-pm2 startup systemd -u root --hp /root
+pm2 startup systemd -u root --hp /root 2>/dev/null || true
 
 # Удали временную папку
-cd /var/www/imp
-rm -rf temp-deploy
+rm -rf /var/www/imp/temp-deploy
 
 echo "  → Backend deployed!"
 ENDSSH
@@ -83,10 +90,10 @@ curl -s https://pix-dodo.ru/api/auth/login -X POST \
 echo ""
 
 echo ""
-echo "=== ✅ DEPLOYMENT COMPLETE ==="
+echo "=== DEPLOYMENT COMPLETE ==="
 echo ""
-echo "🌐 Site: https://pix-dodo.ru"
-echo "🔐 Login: admin@pix-dodo.ru / admin123"
+echo "Site: https://pix-dodo.ru"
+echo "Login: admin@pix-dodo.ru / admin123"
 echo ""
-echo "📊 Check logs: ssh -p 2222 root@72.56.249.243 'pm2 logs pix-backend'"
+echo "Check logs: ssh -p 2222 root@72.56.249.243 'pm2 logs pix-backend'"
 echo ""

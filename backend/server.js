@@ -10,7 +10,9 @@ const path         = require('path');
 
 const SESSION_SECRET = process.env.SESSION_SECRET || 'pix-session-secret-change-in-production';
 const PORT           = process.env.PORT || 3000;
-const DB_PATH        = path.join(__dirname, 'dodo.db');
+// DB and sessions live in ../data/ so they survive backend directory replacements on deploy
+const DATA_DIR = path.join(__dirname, '../data');
+const DB_PATH  = path.join(DATA_DIR, 'dodo.db');
 
 // ── Database ───────────────────────────────────────────────────────────────────
 const db = new Database(DB_PATH);
@@ -178,7 +180,7 @@ const app = express();
 app.set('trust proxy', 1);
 app.use(express.json());
 app.use(session({
-  store: new SQLiteStore({ db: 'sessions.db', dir: __dirname }),
+  store: new SQLiteStore({ db: 'sessions.db', dir: DATA_DIR }),
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
